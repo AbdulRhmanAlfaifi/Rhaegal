@@ -66,8 +66,8 @@ In the following example I ran the tool on the logs samples from the repository 
 ```
 
  The following is an example of the output:
-
-
+![Output Example](screenshots/Results.png)
+**NOTE** : The image above only contains three colums but the actual output is 8 colums.
 
 # Can I use SIGMA rules with this tool ?
 
