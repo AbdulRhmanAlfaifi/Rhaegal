@@ -59,7 +59,7 @@ optional arguments:
 
 # Examples
 
-In the following example I ran the tool on the logs samples from the repository https://github.com/sbousseaden/EVTX-ATTACK-SAMPLES. With the ruleset on this repository. The tool outputs the rules in CSV format on this format:
+In the following example I ran the tool on log samples with the ruleset on this repository. The tool outputs the rules in CSV format on this format:
 
 ```
 "DateAndTime","EventRecordID/s","RuleName","RuleScore","RuleDiscription","RuleRefrence","MatchedStr","EventRawData"
