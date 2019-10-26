@@ -1,0 +1,141 @@
+public MaliciousServiceInstalled
+{
+    metadata:
+      author: "AbdulRhman Alfaifi"
+      reference: "Init Rules"
+      creationDate: "01/01/2019"
+      score: 70
+      description: "Detect RemoteAccessTool Service Installed"
+    Channel: "System"
+    include:
+      EventID: "7045"
+      Data.ServiceName: 
+      - "*PSEXE*"
+      - "*paexe*"
+      - "*anydesk*"
+      - "*mssecsvc*"
+      - "*pwdump*"
+      - '*gsecdump*'
+      - '*cachedump*'
+}
+
+public Powershell_Execution
+{
+    metadata:
+      author: "AbdulRhman Alfaifi"
+      reference: "Init Rules"
+      creationDate: "01/01/2019"
+      score: 100
+      description: "Detect Malicious powershell execution"
+    Channel: "Windows PowerShell"
+    include:
+      EventID: 
+        - "600"
+        - "403"
+        - "400"
+      Data0:
+        - "*downloadstring*"
+        - "*downloadfile*"
+        - "*iex*"
+        - "* -e *"
+}
+
+
+public ScheduledTaskCreated
+{
+    metadata:
+      author: "AbdulRhman Alfaifi"
+      reference: "Init Rules"
+      creationDate: "17/10/2019"
+      score: 70
+      description: "New Scheduled Task was Created"
+    Channel: "Microsoft-Windows-TaskScheduler/Operational"
+    include:
+      EventID: "106"
+}
+
+public ScheduledTaskUpdated
+{
+    metadata:
+      author: "AbdulRhman Alfaifi"
+      reference: "Init Rules"
+      creationDate: "17/10/2019"
+      score: 70
+      description: "New Scheduled Task was Updated"
+    Channel: "Microsoft-Windows-TaskScheduler/Operational"
+    include:
+      EventID: "140"
+}
+
+public ScheduledTaskDeleted
+{
+    metadata:
+      author: "AbdulRhman Alfaifi"
+      reference: "Init Rules"
+      creationDate: "17/10/2019"
+      score: 70
+      description: "New Scheduled Task was Deleted"
+    Channel: "Microsoft-Windows-TaskScheduler/Operational"
+    include:
+      EventID: "141"
+}
+
+
+public PTHAttack_1
+{
+    metadata:
+      author: "AbdulRhman Alfaifi"
+      reference: "Init Rules"
+      creationDate: "17/10/2019"
+      score: 80
+      description: "Pass the Hash was detected"
+    Channel: "Security"
+    include:
+      EventID: "4624"
+      Data.SubjectUserSid: "S-1-0-0"
+      Data.LogonType: "3"
+      Data.LogonProcessName: "NtLmSsp"
+}
+
+public PTHAttack_2
+{
+    metadata:
+      author: "AbdulRhman Alfaifi"
+      reference: "Init Rules"
+      creationDate: "17/10/2019"
+      score: 80
+      description: "Pass the Hash was detected"
+    Channel: "Security"
+    include:
+      EventID: "4624"
+      Data.LogonType: "9"
+      Data.LogonProcessName: "seclogo"
+    exclude:
+      Data.TargetUserName: "ANONYMOUS LOGON"
+}
+
+public AccountCreation
+{
+    metadata:
+      author: "AbdulRhman Alfaifi"
+      reference: "Init Rules"
+      creationDate: "17/10/2019"
+      score: 50
+      description: "Account Creation was detected"
+    Channel: "Security"
+    include:
+      EventID: "4720"
+}
+
+public EventLogsCleared
+{
+    metadata:
+      author: "AbdulRhman Alfaifi"
+      reference: "Init Rules"
+      creationDate: "17/10/2019"
+      score: 100
+      description: "Windows Event Logs Cleared"
+    Channel: "Security"
+    include:
+      EventID: "4720"
+}

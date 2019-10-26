@@ -1,0 +1,1686 @@
+public PowerShell_ShellCode 
+{
+    metadata:
+      author: David Ledbetter (shellcode), Florian Roth (rule)
+      reference: https://twitter.com/cyb3rops/status/1063072865992523776
+      creationDate: 2018/11/17
+      score: 100
+      description: Detects Base64 encoded Shellcode
+    Channel: Microsoft-Windows-PowerShell/Operational
+    include:
+      EventID: '4104'
+      Data.ScriptBlockText:
+      - '*AAAAYInlM*'
+      - '*OiCAAAAYInlM*'
+      - '*OiJAAAAYInlM*'
+}
+# ----------------------------------------------------------------------------------------------------
+public PowerShell_Downgrade_Attack 
+{
+    metadata:
+      author: Florian Roth (rule), Lee Holmes (idea)
+      reference: http://www.leeholmes.com/blog/2017/03/17/detecting-and-preventing-powershell-downgrade-attacks/
+      creationDate: '2019-10-22'
+      score: 60
+      description: Detects PowerShell downgrade attack by comparing the host versions
+        with the actually used engine version 2.0
+    Channel: Windows PowerShell
+    include:
+      EventID: '400'
+      Data0: 'EngineVersion=2.*'
+    exclude:
+      Data0: 'HostVersion=2.*'
+}
+# ----------------------------------------------------------------------------------------------------
+public PowerShell_PSAttack 
+{
+    metadata:
+      author: Sean Metcalf (source), Florian Roth (rule)
+      reference: https://adsecurity.org/?p=2921
+      creationDate: '2019-10-22'
+      score: 80
+      description: Detects the use of PSAttack PowerShell hack tool
+    Channel: Microsoft-Windows-PowerShell/Operational
+    include:
+      EventID: '4103'
+      Data.ScriptBlockText: '*PS ATTACK!!!*'
+}
+# ----------------------------------------------------------------------------------------------------
+public PowerShell_Credential_Prompt 
+{
+    metadata:
+      author: John Lambert (idea), Florian Roth (rule)
+      reference: https://twitter.com/JohnLaTwC/status/850381440629981184, https://t.co/ezOTGy1a1G
+      creationDate: '2019-10-22'
+      score: 80
+      description: Detects PowerShell calling a credential prompt
+    Channel: Microsoft-Windows-PowerShell/Operational
+    include:
+      EventID: '4104'
+      Data.ScriptBlockText: '*PromptForCredential*'
+}
+# ----------------------------------------------------------------------------------------------------
+public QuarksPwDump_Dump_File 
+{
+    metadata:
+      author: Florian Roth
+      reference: https://jpcertcc.github.io/ToolAnalysisResultSheet/details/QuarksPWDump.htm
+      creationDate: 2018/02/10
+      score: 100
+      description: Detects a dump file written by QuarksPwDump password dumper
+    Channel: Microsoft-Windows-Sysmon/Operational
+    include:
+      EventID: '11'
+      Data.TargetFilename: '*\AppData\Local\Temp\SAM-*.dmp*'
+}
+# ----------------------------------------------------------------------------------------------------
+public LSASS_Memory_Dump 
+{
+    metadata:
+      author: Samir Bousseaden
+      reference: https://blog.menasec.net/2019/02/threat-hunting-21-procdump-or-taskmgr.html
+      creationDate: '2019-10-22'
+      score: 80
+      description: Detects process LSASS memory dump using procdump or taskmgr based on
+        the CallTrace pointing to dbghelp.dll or dbgcore.dll for win10
+    Channel: Microsoft-Windows-Sysmon/Operational
+    include:
+      EventID: '10'
+      Data.TargetImage: C:\windows\system32\lsass.exe
+      Data.GrantedAccess: '0x1fffff'
+      Data.CallTrace:
+      - '*dbghelp.dll*'
+      - '*dbgcore.dll*'
+}
+# ----------------------------------------------------------------------------------------------------
+public Mimikatz_through_Windows_Remote_Management 
+{
+    metadata:
+      author: Patryk Prauze - ING Tech
+      reference: https://pentestlab.blog/2018/05/15/lateral-movement-winrm/
+      creationDate: '2019-10-22'
+      score: 80
+      description: Detects usage of mimikatz through WinRM protocol by monitoring access
+        to lsass process by wsmprovhost.exe.
+    Channel: Microsoft-Windows-Sysmon/Operational
+    include:
+      EventID: '10'
+      Data.TargetImage: C:\windows\system32\lsass.exe
+      Data.SourceImage: C:\Windows\system32\wsmprovhost.exe
+}
+# ----------------------------------------------------------------------------------------------------
+public Renamed_PowerShell 
+{
+    metadata:
+      author: Florian Roth
+      reference: https://twitter.com/christophetd/status/1164506034720952320
+      creationDate: 2019/08/22
+      score: 100
+      description: Detects the execution of a renamed PowerShell often used by attackers
+        or malware
+    Channel: Microsoft-Windows-Sysmon/Operational
+    include:
+      Data.Description: Windows PowerShell
+      Data.Company: Microsoft Corporation
+    exclude:
+      Data.Image:
+      - '*\powershell.exe'
+      - '*\powershell_ise.exe'
+}
+# ----------------------------------------------------------------------------------------------------
+public Possible_Process_Hollowing_Image_Loading 
+{
+    metadata:
+      author: Markus Neis
+      reference: https://cyberwardog.blogspot.com/2017/03/chronicles-of-threat-hunter-hunting-for.html
+      creationDate: 2018/01/07
+      score: 80
+      description: Detects Loading of samlib.dll, WinSCard.dll from untypical process
+        e.g. through process hollowing by Mimikatz
+    Channel: Microsoft-Windows-Sysmon/Operational
+    include:
+      EventID: '7'
+      Data.Image:
+      - '*\notepad.exe'
+      Data.ImageLoaded:
+      - '*\samlib.dll'
+      - '*\WinSCard.dll'
+}
+# ----------------------------------------------------------------------------------------------------
+public Renamed_PsExec 
+{
+    metadata:
+      author: Florian Roth
+      reference: https://www.trendmicro.com/vinfo/hk-en/security/news/cybercrime-and-digital-threats/megacortex-ransomware-spotted-attacking-enterprise-networks
+      creationDate: 2019/05/21
+      score: 80
+      description: Detects the execution of a renamed PsExec often used by attackers or
+        malware
+    Channel: Microsoft-Windows-Sysmon/Operational
+    include:
+      Data.Description: Execute processes remotely
+      Data.Product: Sysinternals PsExec
+    exclude:
+      Data.Image:
+      - '*\PsExec.exe'
+      - '*\PsExec64.exe'
+}
+# ----------------------------------------------------------------------------------------------------
+public Suspicious_Typical_Malware_Back_Connect_Ports 
+{
+    metadata:
+      author: Florian Roth
+      reference: https://docs.google.com/spreadsheets/d/17pSTDNpa0sf6pHeRhusvWG6rThciE8CsXTSlDUAZDyo
+      creationDate: 2017/03/19
+      score: 60
+      description: Detects programs that connect to typical malware back connect ports
+        based on statistical analysis from two different sandbox system databases
+    Channel: Microsoft-Windows-Sysmon/Operational
+    include:
+      EventID: '3'
+      Data.Initiated: 'true'
+      Data.DestinationPort:
+      - '4443'
+      - '2448'
+      - '8143'
+      - '1777'
+      - '1443'
+      - '243'
+      - '65535'
+      - '13506'
+      - '3360'
+      - '200'
+      - '198'
+      - '49180'
+      - '13507'
+      - '6625'
+      - '4444'
+      - '4438'
+      - '1904'
+      - '13505'
+      - '13504'
+      - '12102'
+      - '9631'
+      - '5445'
+      - '2443'
+      - '777'
+      - '13394'
+      - '13145'
+      - '12103'
+      - '5552'
+      - '3939'
+      - '3675'
+      - '666'
+      - '473'
+      - '5649'
+      - '4455'
+      - '4433'
+      - '1817'
+      - '100'
+      - '65520'
+      - '1960'
+      - '1515'
+      - '743'
+      - '700'
+      - '14154'
+      - '14103'
+      - '14102'
+      - '12322'
+      - '10101'
+      - '7210'
+      - '4040'
+      - '9943'
+}
+# ----------------------------------------------------------------------------------------------------
+public Hijack_legit_RDP_session_to_move_laterally 
+{
+    metadata:
+      author: Samir Bousseaden
+      reference: ''
+      creationDate: 2019/02/21
+      score: 80
+      description: Detects the usage of tsclient share to place a backdoor on the RDP
+        source machine's startup folder
+    Channel: Microsoft-Windows-Sysmon/Operational
+    include:
+      EventID: '11'
+      Data.Image: '*\mstsc.exe'
+      Data.TargetFileName: '*\Microsoft\Windows\Start Menu\Programs\Startup\\*'
+}
+# ----------------------------------------------------------------------------------------------------
+public Malicious_Named_Pipe 
+{
+    metadata:
+      author: Florian Roth
+      reference: Various sources
+      creationDate: 2017/11/06
+      score: 100
+      description: Detects the creation of a named pipe used by known APT malware
+    Channel: Microsoft-Windows-Sysmon/Operational
+    include:
+      EventID:
+      - '17'
+      - '18'
+      Data.PipeName:
+      - \isapi_http
+      - \isapi_dg
+      - \isapi_dg2
+      - \sdlrpc
+      - \ahexec
+      - \winsession
+      - \lsassw
+      - \46a676ab7f179e511e30dd2dc41bd388
+      - \9f81f59bc58452127884ce513865ed20
+      - \e710f28d59aa529d6792ca6ff0ca1b34
+      - \rpchlp_3
+      - \NamePipe_MoreWindows
+      - \pcheap_reuse
+      - \msagent_*
+}
+# ----------------------------------------------------------------------------------------------------
+public PowerShell_Rundll32_Remote_Thread_Creation 
+{
+    metadata:
+      author: Florian Roth
+      reference: https://www.fireeye.com/blog/threat-research/2018/06/bring-your-own-land-novel-red-teaming-technique.html
+      creationDate: 2018/06/25
+      score: 80
+      description: Detects PowerShell remote thread creation in Rundll32.exe
+    Channel: Microsoft-Windows-Sysmon/Operational
+    include:
+      EventID: '8'
+      Data.SourceImage: '*\powershell.exe'
+      Data.TargetImage: '*\rundll32.exe'
+}
+# ----------------------------------------------------------------------------------------------------
+public Suspicious_Scripting_in_a_WMI_Consumer 
+{
+    metadata:
+      author: Florian Roth
+      reference: https://in.security/an-intro-into-abusing-and-identifying-wmi-event-subscriptions-for-persistence/,
+        https://github.com/Neo23x0/signature-base/blob/master/yara/gen_susp_lnk_files.yar#L19
+      creationDate: 2019/04/15
+      score: 80
+      description: Detects suspicious scripting in WMI Event Consumers
+    Channel: Microsoft-Windows-Sysmon/Operational
+    include:
+      EventID: '20'
+      Data.Destination:
+      - '*new-object system.net.webclient).downloadstring(*'
+      - '*new-object system.net.webclient).downloadfile(*'
+      - '*new-object net.webclient).downloadstring(*'
+      - '*new-object net.webclient).downloadfile(*'
+      - '* iex(*'
+      - '*WScript.shell*'
+      - '* -nop *'
+      - '* -noprofile *'
+      - '* -decode *'
+      - '* -enc *'
+}
+# ----------------------------------------------------------------------------------------------------
+public Detection_of_SafetyKatz 
+{
+    metadata:
+      author: Markus Neis
+      reference: https://github.com/GhostPack/SafetyKatz
+      creationDate: 2018/07/24
+      score: 80
+      description: Detects possible SafetyKatz Behaviour
+    Channel: Microsoft-Windows-Sysmon/Operational
+    include:
+      EventID: '11'
+      Data.TargetFilename: '*\Temp\debug.bin'
+}
+# ----------------------------------------------------------------------------------------------------
+public Rundll32_Internet_Connection 
+{
+    metadata:
+      author: Florian Roth
+      reference: https://www.hybrid-analysis.com/sample/759fb4c0091a78c5ee035715afe3084686a8493f39014aea72dae36869de9ff6?environmentId=100
+      creationDate: 2017/11/04
+      score: 60
+      description: Detects a rundll32 that communicates with public IP addresses
+    Channel: Microsoft-Windows-Sysmon/Operational
+    include:
+      EventID: '3'
+      Data.Image: '*\rundll32.exe'
+      Data.Initiated: 'true'
+    exclude:
+      Data.DestinationIp:
+      - 10.*
+      - 192.168.*
+      - 172.16.*
+      - 172.17.*
+      - 172.18.*
+      - 172.19.*
+      - 172.20.*
+      - 172.21.*
+      - 172.22.*
+      - 172.23.*
+      - 172.24.*
+      - 172.25.*
+      - 172.26.*
+      - 172.27.*
+      - 172.28.*
+      - 172.29.*
+      - 172.30.*
+      - 172.31.*
+      - 127.*
+}
+# ----------------------------------------------------------------------------------------------------
+public Microsoft_Binary_Suspicious_Communication_Endpoint 
+{
+    metadata:
+      author: Florian Roth
+      reference: https://twitter.com/M_haggis/status/900741347035889665, https://twitter.com/M_haggis/status/1032799638213066752
+      creationDate: 2018/08/30
+      score: 80
+      description: Detects an executable in the Windows folder accessing suspicious domains
+    Channel: Microsoft-Windows-Sysmon/Operational
+    include:
+      EventID: '3'
+      Data.Initiated: 'true'
+      Data.DestinationHostname:
+      - '*dl.dropboxusercontent.com'
+      - '*.pastebin.com'
+      - '*.githubusercontent.com'
+      Data.Image: C:\Windows\\*
+}
+# ----------------------------------------------------------------------------------------------------
+public Microsoft_Binary_Github_Communication 
+{
+    metadata:
+      author: Michael Haag (idea), Florian Roth (rule)
+      reference: https://twitter.com/M_haggis/status/900741347035889665, https://twitter.com/M_haggis/status/1032799638213066752
+      creationDate: '2019-10-22'
+      score: 80
+      description: Detects an executable in the Windows folder accessing github.com
+    Channel: Microsoft-Windows-Sysmon/Operational
+    include:
+      EventID: '3'
+      Data.Initiated: 'true'
+      Data.DestinationHostname:
+      - '*.github.com'
+      - '*.githubusercontent.com'
+      Data.Image: C:\Windows\\*
+}
+# ----------------------------------------------------------------------------------------------------
+public WMI_Persistence___Script_Event_Consumer_File_Write 
+{
+    metadata:
+      author: Thomas Patzke
+      reference: https://www.eideon.com/2018-03-02-THL03-WMIBackdoors/
+      creationDate: 2018/03/07
+      score: 80
+      description: Detects file writes of WMI script event consumer
+    Channel: Microsoft-Windows-Sysmon/Operational
+    include:
+      EventID: '11'
+      Data.Image: C:\WINDOWS\system32\wbem\scrcons.exe
+}
+# ----------------------------------------------------------------------------------------------------
+public PowerShell_Network_Connections 
+{
+    metadata:
+      author: Florian Roth
+      reference: https://www.youtube.com/watch?v=DLtJTxMWZ2o
+      creationDate: '2019-10-22'
+      score: 40
+      description: Detects a Powershell process that opens network connections - check
+        for suspicious target ports and target systems - adjust to your environment (e.g.
+        extend filters with company's ip range')
+    Channel: Microsoft-Windows-Sysmon/Operational
+    include:
+      EventID: '3'
+      Data.Image: '*\powershell.exe'
+      Data.Initiated: 'true'
+    exclude:
+      Data.DestinationIp:
+      - 10.*
+      - 192.168.*
+      - 172.16.*
+      - 172.17.*
+      - 172.18.*
+      - 172.19.*
+      - 172.20.*
+      - 172.21.*
+      - 172.22.*
+      - 172.23.*
+      - 172.24.*
+      - 172.25.*
+      - 172.26.*
+      - 172.27.*
+      - 172.28.*
+      - 172.29.*
+      - 172.30.*
+      - 172.31.*
+      - 127.0.0.1
+      Data.DestinationIsIpv6: 'false'
+      Data.User: NT AUTHORITY\SYSTEM
+}
+# ----------------------------------------------------------------------------------------------------
+public UAC_Bypass_via_sdclt 
+{
+    metadata:
+      author: Omer Yampel
+      reference: https://enigma0x3.net/2017/03/17/fileless-uac-bypass-using-sdclt-exe/
+      creationDate: '2019-10-22'
+      score: 80
+      description: Detects changes to HKCU:\Software\Classes\exefile\shell\runas\command\isolatedCommand
+    Channel: Microsoft-Windows-Sysmon/Operational
+    include:
+      EventID: '13'
+      Data.TargetObject: HKEY_USERS\\*\Classes\exefile\shell\runas\command\isolatedCommand
+}
+# ----------------------------------------------------------------------------------------------------
+public Registry_Persistence_via_Explorer_Run_Key 
+{
+    metadata:
+      author: Florian Roth
+      reference: https://researchcenter.paloaltonetworks.com/2018/07/unit42-upatre-continues-evolve-new-anti-analysis-techniques/
+      creationDate: 2018/07/18
+      score: 80
+      description: Detects a possible persistence mechanism using RUN key for Windows
+        Explorer and poiting to a suspicious folder
+    Channel: Microsoft-Windows-Sysmon/Operational
+    include:
+      EventID: '13'
+      Data.TargetObject: '*\Microsoft\Windows\CurrentVersion\Policies\Explorer\Run'
+      Data.Details:
+      - C:\Windows\Temp\\*
+      - C:\ProgramData\\*
+      - '*\AppData\\*'
+      - C:\$Recycle.bin\\*
+      - C:\Temp\\*
+      - C:\Users\Public\\*
+      - C:\Users\Default\\*
+}
+# ----------------------------------------------------------------------------------------------------
+public Registry_Persistence_via_Explorer_Run_Key 
+{
+    metadata:
+      author: Florian Roth
+      reference: https://researchcenter.paloaltonetworks.com/2018/07/unit42-upatre-continues-evolve-new-anti-analysis-techniques/
+      creationDate: 2018/07/18
+      score: 80
+      description: Detects a possible persistence mechanism using RUN key for Windows
+        Explorer and poiting to a suspicious folder
+    Channel: Microsoft-Windows-Sysmon/Operational
+    include:
+      EventID: '13'
+      Data.TargetObject: '*\Microsoft\Windows\CurrentVersion\Policies\Explorer\Run'
+      Data.Details:
+      - C:\Windows\Temp\\*
+      - C:\ProgramData\\*
+      - '*\AppData\\*'
+      - C:\$Recycle.bin\\*
+      - C:\Temp\\*
+      - C:\Users\Public\\*
+      - C:\Users\Default\\*
+}
+# ----------------------------------------------------------------------------------------------------
+public Suspicious_RUN_Key_from_Download 
+{
+    metadata:
+      author: Florian Roth
+      reference: https://app.any.run/tasks/c5bef5b7-f484-4c43-9cf3-d5c5c7839def/
+      creationDate: 2019/10/01
+      score: 80
+      description: Detects the suspicious RUN keys created by software located in Download
+        or temporary Outlook/Internet Explorer directories
+    Channel: Microsoft-Windows-Sysmon/Operational
+    include:
+      EventID: '13'
+      Data.Image:
+      - '*\Downloads\\*'
+      - '*\Temporary Internet Files\Content.Outlook\\*'
+      - '*\Local Settings\Temporary Internet Files\\*'
+      Data.TargetObject: '*\SOFTWARE\Microsoft\Windows\CurrentVersion\Run\\*'
+}
+# ----------------------------------------------------------------------------------------------------
+public Suspicious_RUN_Key_from_Download 
+{
+    metadata:
+      author: Florian Roth
+      reference: https://app.any.run/tasks/c5bef5b7-f484-4c43-9cf3-d5c5c7839def/
+      creationDate: 2019/10/01
+      score: 80
+      description: Detects the suspicious RUN keys created by software located in Download
+        or temporary Outlook/Internet Explorer directories
+    Channel: Microsoft-Windows-Sysmon/Operational
+    include:
+      EventID: '13'
+      Data.Image:
+      - '*\Downloads\\*'
+      - '*\Temporary Internet Files\Content.Outlook\\*'
+      - '*\Local Settings\Temporary Internet Files\\*'
+      Data.TargetObject: '*\SOFTWARE\Microsoft\Windows\CurrentVersion\Run\\*'
+}
+# ----------------------------------------------------------------------------------------------------
+public Malware_Shellcode_in_Verclsid_Target_Process 
+{
+    metadata:
+      author: John Lambert (tech), Florian Roth (rule)
+      reference: https://twitter.com/JohnLaTwC/status/837743453039534080
+      creationDate: 2017/03/04
+      score: 80
+      description: Detects a process access to verclsid.exe that injects shellcode from
+        a Microsoft Office application / VBA macro
+    Channel: Microsoft-Windows-Sysmon/Operational
+    include:
+      EventID: '10'
+      Data.TargetImage: '*\verclsid.exe'
+      Data.GrantedAccess: '0x1FFFFF'
+}
+# ----------------------------------------------------------------------------------------------------
+public Suspicious_Program_Location_with_Network_Connections 
+{
+    metadata:
+      author: Florian Roth
+      reference: https://docs.google.com/spreadsheets/d/17pSTDNpa0sf6pHeRhusvWG6rThciE8CsXTSlDUAZDyo
+      creationDate: 2017/03/19
+      score: 80
+      description: Detects programs with network connections running in suspicious files
+        system locations
+    Channel: Microsoft-Windows-Sysmon/Operational
+    include:
+      EventID: '3'
+      Data.Image:
+      - '*\$Recycle.bin'
+      - '*\Users\All Users\\*'
+      - '*\Users\Default\\*'
+      - '*\Users\Public\\*'
+      - '*\Users\Contacts\\*'
+      - '*\Users\Searches\\*'
+      - C:\Perflogs\\*
+      - '*\config\systemprofile\\*'
+      - '*\Windows\Fonts\\*'
+      - '*\Windows\IME\\*'
+      - '*\Windows\addins\\*'
+}
+# ----------------------------------------------------------------------------------------------------
+public CACTUSTORCH_Remote_Thread_Creation 
+{
+    metadata:
+      author: '@SBousseaden (detection), Thomas Patzke (rule)'
+      reference: https://twitter.com/SBousseaden/status/1090588499517079552, https://github.com/mdsecactivebreach/CACTUSTORCH
+      creationDate: '2019-10-22'
+      score: 80
+      description: Detects remote thread creation from CACTUSTORCH as described in references.
+    Channel: Microsoft-Windows-Sysmon/Operational
+    include:
+      EventID: '8'
+      Data.SourceImage:
+      - '*\System32\cscript.exe'
+      - '*\System32\wscript.exe'
+      - '*\System32\mshta.exe'
+      - '*\winword.exe'
+      - '*\excel.exe'
+      Data.TargetImage: '*\SysWOW64\\*'
+      Data.StartModule: None
+}
+# ----------------------------------------------------------------------------------------------------
+public Malicious_PowerShell_Commandlet_Names 
+{
+    metadata:
+      author: Markus Neis
+      reference: https://raw.githubusercontent.com/Neo23x0/sigma/f35c50049fa896dff91ff545cb199319172701e8/rules/windows/powershell/powershell_malicious_commandlets.yml
+      creationDate: 2018/04/07
+      score: 80
+      description: Detects the creation of known powershell scripts for exploitation
+    Channel: Microsoft-Windows-Sysmon/Operational
+    include:
+      EventID: '11'
+      Data.TargetFilename:
+      - '*\Invoke-DllInjection.ps1'
+      - '*\Invoke-WmiCommand.ps1'
+      - '*\Get-GPPPassword.ps1'
+      - '*\Get-Keystrokes.ps1'
+      - '*\Get-VaultCredential.ps1'
+      - '*\Invoke-CredentialInjection.ps1'
+      - '*\Invoke-Mimikatz.ps1'
+      - '*\Invoke-NinjaCopy.ps1'
+      - '*\Invoke-TokenManipulation.ps1'
+      - '*\Out-Minidump.ps1'
+      - '*\VolumeShadowCopyTools.ps1'
+      - '*\Invoke-ReflectivePEInjection.ps1'
+      - '*\Get-TimedScreenshot.ps1'
+      - '*\Invoke-UserHunter.ps1'
+      - '*\Find-GPOLocation.ps1'
+      - '*\Invoke-ACLScanner.ps1'
+      - '*\Invoke-DowngradeAccount.ps1'
+      - '*\Get-ServiceUnquoted.ps1'
+      - '*\Get-ServiceFilePermission.ps1'
+      - '*\Get-ServicePermission.ps1'
+      - '*\Invoke-ServiceAbuse.ps1'
+      - '*\Install-ServiceBinary.ps1'
+      - '*\Get-RegAutoLogon.ps1'
+      - '*\Get-VulnAutoRun.ps1'
+      - '*\Get-VulnSchTask.ps1'
+      - '*\Get-UnattendedInstallFile.ps1'
+      - '*\Get-WebConfig.ps1'
+      - '*\Get-ApplicationHost.ps1'
+      - '*\Get-RegAlwaysInstallElevated.ps1'
+      - '*\Get-Unconstrained.ps1'
+      - '*\Add-RegBackdoor.ps1'
+      - '*\Add-ScrnSaveBackdoor.ps1'
+      - '*\Gupt-Backdoor.ps1'
+      - '*\Invoke-ADSBackdoor.ps1'
+      - '*\Enabled-DuplicateToken.ps1'
+      - '*\Invoke-PsUaCme.ps1'
+      - '*\Remove-Update.ps1'
+      - '*\Check-VM.ps1'
+      - '*\Get-LSASecret.ps1'
+      - '*\Get-PassHashes.ps1'
+      - '*\Show-TargetScreen.ps1'
+      - '*\Port-Scan.ps1'
+      - '*\Invoke-PoshRatHttp.ps1'
+      - '*\Invoke-PowerShellTCP.ps1'
+      - '*\Invoke-PowerShellWMI.ps1'
+      - '*\Add-Exfiltration.ps1'
+      - '*\Add-Persistence.ps1'
+      - '*\Do-Exfiltration.ps1'
+      - '*\Start-CaptureServer.ps1'
+      - '*\Invoke-ShellCode.ps1'
+      - '*\Get-ChromeDump.ps1'
+      - '*\Get-ClipboardContents.ps1'
+      - '*\Get-FoxDump.ps1'
+      - '*\Get-IndexedItem.ps1'
+      - '*\Get-Screenshot.ps1'
+      - '*\Invoke-Inveigh.ps1'
+      - '*\Invoke-NetRipper.ps1'
+      - '*\Invoke-EgressCheck.ps1'
+      - '*\Invoke-PostExfil.ps1'
+      - '*\Invoke-PSInject.ps1'
+      - '*\Invoke-RunAs.ps1'
+      - '*\MailRaider.ps1'
+      - '*\New-HoneyHash.ps1'
+      - '*\Set-MacAttribute.ps1'
+      - '*\Invoke-DCSync.ps1'
+      - '*\Invoke-PowerDump.ps1'
+      - '*\Exploit-Jboss.ps1'
+      - '*\Invoke-ThunderStruck.ps1'
+      - '*\Invoke-VoiceTroll.ps1'
+      - '*\Set-Wallpaper.ps1'
+      - '*\Invoke-InveighRelay.ps1'
+      - '*\Invoke-PsExec.ps1'
+      - '*\Invoke-SSHCommand.ps1'
+      - '*\Get-SecurityPackages.ps1'
+      - '*\Install-SSP.ps1'
+      - '*\Invoke-BackdoorLNK.ps1'
+      - '*\PowerBreach.ps1'
+      - '*\Get-SiteListPassword.ps1'
+      - '*\Get-System.ps1'
+      - '*\Invoke-BypassUAC.ps1'
+      - '*\Invoke-Tater.ps1'
+      - '*\Invoke-WScriptBypassUAC.ps1'
+      - '*\PowerUp.ps1'
+      - '*\PowerView.ps1'
+      - '*\Get-RickAstley.ps1'
+      - '*\Find-Fruit.ps1'
+      - '*\HTTP-Login.ps1'
+      - '*\Find-TrustedDocuments.ps1'
+      - '*\Invoke-Paranoia.ps1'
+      - '*\Invoke-WinEnum.ps1'
+      - '*\Invoke-ARPScan.ps1'
+      - '*\Invoke-PortScan.ps1'
+      - '*\Invoke-ReverseDNSLookup.ps1'
+      - '*\Invoke-SMBScanner.ps1'
+      - '*\Invoke-Mimikittenz.ps1'
+}
+# ----------------------------------------------------------------------------------------------------
+public DHCP_Callout_DLL_installation 
+{
+    metadata:
+      author: Dimitrios Slamaris
+      reference: https://blog.3or.de/mimilib-dhcp-server-callout-dll-injection.html, https://technet.microsoft.com/en-us/library/cc726884(v=ws.10).aspx,
+        https://msdn.microsoft.com/de-de/library/windows/desktop/aa363389(v=vs.85).aspx
+      creationDate: 2017/05/15
+      score: 80
+      description: Detects the installation of a Callout DLL via CalloutDlls and CalloutEnabled
+        parameter in Registry, which can be used to execute code in context of the DHCP
+        server (restart required)
+    Channel: Microsoft-Windows-Sysmon/Operational
+    include:
+      EventID: '13'
+      Data.TargetObject:
+      - '*\Services\DHCPServer\Parameters\CalloutDlls'
+      - '*\Services\DHCPServer\Parameters\CalloutEnabled'
+}
+# ----------------------------------------------------------------------------------------------------
+public DHCP_Callout_DLL_installation 
+{
+    metadata:
+      author: Dimitrios Slamaris
+      reference: https://blog.3or.de/mimilib-dhcp-server-callout-dll-injection.html, https://technet.microsoft.com/en-us/library/cc726884(v=ws.10).aspx,
+        https://msdn.microsoft.com/de-de/library/windows/desktop/aa363389(v=vs.85).aspx
+      creationDate: 2017/05/15
+      score: 80
+      description: Detects the installation of a Callout DLL via CalloutDlls and CalloutEnabled
+        parameter in Registry, which can be used to execute code in context of the DHCP
+        server (restart required)
+    Channel: Microsoft-Windows-Sysmon/Operational
+    include:
+      EventID: '13'
+      Data.TargetObject:
+      - '*\Services\DHCPServer\Parameters\CalloutDlls'
+      - '*\Services\DHCPServer\Parameters\CalloutEnabled'
+}
+# ----------------------------------------------------------------------------------------------------
+public Password_Dumper_Remote_Thread_in_LSASS 
+{
+    metadata:
+      author: Thomas Patzke
+      reference: https://jpcertcc.github.io/ToolAnalysisResultSheet/details/WCE.htm
+      creationDate: '2019-10-22'
+      score: 80
+      description: Detects password dumper activity by monitoring remote thread creation
+        EventID 8 in combination with the lsass.exe process as TargetImage. The process
+        in field Process is the malicious program. A single execution can lead to hundreds
+        of events.
+    Channel: Microsoft-Windows-Sysmon/Operational
+    include:
+      EventID: '8'
+      Data.TargetImage: C:\Windows\System32\lsass.exe
+      Data.StartModule: None
+}
+# ----------------------------------------------------------------------------------------------------
+public Mimikatz_Detection_LSASS_Access 
+{
+    metadata:
+      author: null
+      reference: https://onedrive.live.com/view.aspx?resid=D026B4699190F1E6!2843&ithint=file%2cpptx&app=PowerPoint&authkey=!AMvCRTKB_V1J5ow,
+        https://cyberwardog.blogspot.com/2017/03/chronicles-of-threat-hunter-hunting-for_22.html
+      creationDate: '2019-10-22'
+      score: 80
+      description: Detects process access to LSASS which is typical for Mimikatz (0x1000
+        PROCESS_QUERY_ LIMITED_INFORMATION, 0x0400 PROCESS_QUERY_ INFORMATION "only old
+        versions", 0x0010 PROCESS_VM_READ)
+    Channel: Microsoft-Windows-Sysmon/Operational
+    include:
+      EventID: '10'
+      Data.TargetImage: C:\windows\system32\lsass.exe
+      Data.GrantedAccess:
+      - '0x1410'
+      - '0x1010'
+}
+# ----------------------------------------------------------------------------------------------------
+public RDP_over_Reverse_SSH_Tunnel 
+{
+    metadata:
+      author: Samir Bousseaden
+      reference: https://twitter.com/SBousseaden/status/1096148422984384514
+      creationDate: 2019/02/16
+      score: 80
+      description: Detects svchost hosting RDP termsvcs communicating with the loopback
+        address and on TCP port 3389
+    Channel: Microsoft-Windows-Sysmon/Operational
+    include:
+      EventID: '3'
+      Data.Image: '*\svchost.exe'
+      Data.Initiated: 'true'
+      Data.SourcePort: '3389'
+      Data.DestinationIp:
+      - 127.*
+      - ::1
+}
+# ----------------------------------------------------------------------------------------------------
+public Suspicious_Driver_Load_from_Temp 
+{
+    metadata:
+      author: Florian Roth
+      reference: ''
+      creationDate: '2019-10-22'
+      score: 60
+      description: Detects a driver load from a temporary directory
+    Channel: Microsoft-Windows-Sysmon/Operational
+    include:
+      EventID: '6'
+      Data.ImageLoaded: '*\Temp\\*'
+}
+# ----------------------------------------------------------------------------------------------------
+public WMI_Persistence___Command_Line_Event_Consumer 
+{
+    metadata:
+      author: Thomas Patzke
+      reference: https://www.eideon.com/2018-03-02-THL03-WMIBackdoors/
+      creationDate: 2018/03/07
+      score: 80
+      description: Detects WMI command line event consumers
+    Channel: Microsoft-Windows-Sysmon/Operational
+    include:
+      EventID: '7'
+      Data.Image: C:\Windows\System32\wbem\WmiPrvSE.exe
+      Data.ImageLoaded: wbemcons.dll
+}
+# ----------------------------------------------------------------------------------------------------
+public New_RUN_Key_Pointing_to_Suspicious_Folder 
+{
+    metadata:
+      author: Florian Roth, Markus Neis
+      reference: https://www.fireeye.com/blog/threat-research/2018/08/fin7-pursuing-an-enigmatic-and-evasive-global-criminal-operation.html
+      creationDate: 2018/25/08
+      score: 80
+      description: Detects suspicious new RUN key element pointing to an executable in
+        a suspicious folder
+    Channel: Microsoft-Windows-Sysmon/Operational
+    include:
+      EventID: '13'
+      Data.TargetObject:
+      - '*\SOFTWARE\Microsoft\Windows\CurrentVersion\Run\\*'
+      - '*\SOFTWARE\Microsoft\Windows\CurrentVersion\RunOnce\\*'
+      Data.Details:
+      - '*C:\Windows\Temp\\*'
+      - '*\AppData\\*'
+      - '%AppData%\\*'
+      - '*C:\$Recycle.bin\\*'
+      - '*C:\Temp\\*'
+      - '*C:\Users\Public\\*'
+      - '%Public%\\*'
+      - '*C:\Users\Default\\*'
+      - '*C:\Users\Desktop\\*'
+      - wscript*
+      - cscript*
+}
+# ----------------------------------------------------------------------------------------------------
+public Suspicious_Outbound_RDP_Connections 
+{
+    metadata:
+      author: Markus Neis - Swisscom
+      reference: https://portal.msrc.microsoft.com/en-US/security-guidance/advisory/CVE-2019-0708
+      creationDate: 2019/05/15
+      score: 80
+      description: Detects Non-Standard Tools Connecting to TCP port 3389 indicating possible
+        lateral movement
+    Channel: Microsoft-Windows-Sysmon/Operational
+    include:
+      EventID: '3'
+      Data.DestinationPort: '3389'
+      Data.Initiated: 'true'
+    exclude:
+      Data.Image:
+      - '*\mstsc.exe'
+      - '*\RTSApp.exe'
+      - '*\RTS2App.exe'
+      - '*\RDCMan.exe'
+      - '*\ws_TunnelService.exe'
+      - '*\RSSensor.exe'
+      - '*\RemoteDesktopManagerFree.exe'
+      - '*\RemoteDesktopManager.exe'
+      - '*\RemoteDesktopManager64.exe'
+      - '*\mRemoteNG.exe'
+      - '*\mRemote.exe'
+      - '*\Terminals.exe'
+      - '*\spiceworks-finder.exe'
+      - '*\FSDiscovery.exe'
+      - '*\FSAssessment.exe'
+      - '*\MobaRTE.exe'
+      - '*\chrome.exe'
+      - '*\thor.exe'
+      - '*\thor64.exe'
+}
+# ----------------------------------------------------------------------------------------------------
+public DLL_Load_via_LSASS 
+{
+    metadata:
+      author: Florian Roth
+      reference: https://blog.xpnsec.com/exploring-mimikatz-part-1/, https://twitter.com/SBousseaden/status/1183745981189427200
+      creationDate: 2019/10/16
+      score: 80
+      description: Detects a method to load DLL via LSASS process using an undocumented
+        Registry key
+    Channel: Microsoft-Windows-Sysmon/Operational
+    include:
+      EventID:
+      - '12'
+      - '13'
+      Data.TargetObject:
+      - '*\CurrentControlSet\Services\NTDS\DirectoryServiceExtPt*'
+      - '*\CurrentControlSet\Services\NTDS\LsaDbExtPt*'
+}
+# ----------------------------------------------------------------------------------------------------
+public Executable_in_ADS 
+{
+    metadata:
+      author: Florian Roth, @0xrawsec
+      reference: https://twitter.com/0xrawsec/status/1002478725605273600?s=21
+      creationDate: 2018/06/03
+      score: 100
+      description: Detects the creation of an ADS data stream that contains an executable
+        (non-empty imphash)
+    Channel: Microsoft-Windows-Sysmon/Operational
+    include:
+      EventID: '15'
+    exclude:
+      Data.Imphash: '00000000000000000000000000000000'
+}
+# ----------------------------------------------------------------------------------------------------
+public Remote_Service_Activity_Detected_via_SVCCTL_named_pipe 
+{
+    metadata:
+      author: Samir Bousseaden
+      reference: https://blog.menasec.net/2019/03/threat-hunting-26-remote-windows.html
+      creationDate: '2019-10-22'
+      score: 60
+      description: Detects remote remote service activity via remote access to the svcctl
+        named pipe
+    Channel: Security
+    include:
+      EventID: '5145'
+      Data.ShareName: \\*\IPC$
+      Data.RelativeTargetName: svcctl
+      Data.Accesses: '*WriteData*'
+}
+# ----------------------------------------------------------------------------------------------------
+public SAM_Dump_to_AppData 
+{
+    metadata:
+      author: Florian Roth
+      reference: ''
+      creationDate: '2019-10-22'
+      score: 80
+      description: Detects suspicious SAM dump activity as cause by QuarksPwDump and other
+        password dumpers
+    Channel: System
+    include:
+      EventID: '16'
+      Data.HiveName: '*\AppData\Local\Temp\SAM-*.dmp *'
+}
+# ----------------------------------------------------------------------------------------------------
+public Secure_Deletion_with_SDelete 
+{
+    metadata:
+      author: Thomas Patzke
+      reference: https://jpcertcc.github.io/ToolAnalysisResultSheet, https://www.jpcert.or.jp/english/pub/sr/ir_research.html,
+        https://technet.microsoft.com/en-us/en-en/sysinternals/sdelete.aspx
+      creationDate: '2019-10-22'
+      score: 60
+      description: Detects renaming of file while deletion with SDelete tool
+    Channel: Security
+    include:
+      EventID:
+      - '4656'
+      - '4663'
+      - '4658'
+      Data.ObjectName:
+      - '*.AAA'
+      - '*.ZZZ'
+}
+# ----------------------------------------------------------------------------------------------------
+public Suspicious_access_to_sensitive_file_extensions 
+{
+    metadata:
+      author: Samir Bousseaden
+      reference: ''
+      creationDate: '2019-10-22'
+      score: 80
+      description: Detects known sensitive file extensions
+    Channel: Security
+    include:
+      EventID:
+      - '5145'
+      Data.RelativeTargetName:
+      - '*.pst'
+      - '*.ost'
+      - '*.msg'
+      - '*.nst'
+      - '*.oab'
+      - '*.edb'
+      - '*.nsf'
+      - '*.bak'
+      - '*.dmp'
+      - '*.kirbi'
+      - '*\ntds.dit'
+      - '*\groups.xml'
+      - '*.rdp'
+}
+# ----------------------------------------------------------------------------------------------------
+# NOT SUPPORTED YET
+# public Rare_Service_Installs 
+# {
+#     metadata:
+#       author: Florian Roth
+#       reference: ''
+#       creationDate: '2019-10-22'
+#       score: 40
+#       description: Detects rare service installs that only appear a few times per time
+#         frame and could reveal password dumpers, backdoor installs or other types of malicious
+#         services
+#     Channel: System
+#     include:
+#       EventID: '7045'
+#       check: 'Data.ServiceName < 5'
+# }
+# ----------------------------------------------------------------------------------------------------
+public Suspicious_Kerberos_RC4_Ticket_Encryption 
+{
+    metadata:
+      author: null
+      reference: https://adsecurity.org/?p=3458, https://www.trimarcsecurity.com/single-post/TrimarcResearch/Detecting-Kerberoasting-Activity
+      creationDate: '2019-10-22'
+      score: 60
+      description: Detects service ticket requests using RC4 encryption type
+    Channel: Security
+    include:
+      EventID: '4769'
+      Data.TicketOptions: '0x40810000'
+      Data.TicketEncryptionType: '0x17'
+}
+# ----------------------------------------------------------------------------------------------------
+public Weak_Encryption_Enabled_and_Kerberoast 
+{
+    metadata:
+      author: '@neu5ron'
+      reference: https://adsecurity.org/?p=2053, https://www.harmj0y.net/blog/activedirectory/roasting-as-reps/
+      creationDate: '2019-10-22'
+      score: 80
+      description: Detects scenario where weak encryption is enabled for a user profile
+        which could be used for hash/password cracking.
+    Channel: Security
+    include:
+      EventID: '4738'
+}
+# ----------------------------------------------------------------------------------------------------
+public WCE_wceaux.dll_Access 
+{
+    metadata:
+      author: Thomas Patzke
+      reference: https://www.jpcert.or.jp/english/pub/sr/ir_research.html, https://jpcertcc.github.io/ToolAnalysisResultSheet
+      creationDate: '2019-10-22'
+      score: 100
+      description: Detects wceaux.dll access while WCE pass-the-hash remote command execution
+        on source host
+    Channel: Security
+    include:
+      EventID:
+      - '4656'
+      - '4658'
+      - '4660'
+      - '4663'
+      Data.ObjectName: '*\wceaux.dll'
+}
+# ----------------------------------------------------------------------------------------------------
+public WCE_wceaux.dll_Access 
+{
+    metadata:
+      author: Thomas Patzke
+      reference: https://www.jpcert.or.jp/english/pub/sr/ir_research.html, https://jpcertcc.github.io/ToolAnalysisResultSheet
+      creationDate: '2019-10-22'
+      score: 100
+      description: Detects wceaux.dll access while WCE pass-the-hash remote command execution
+        on source host
+    Channel: Security
+    include:
+      EventID:
+      - '4656'
+      - '4658'
+      - '4660'
+      - '4663'
+      Data.ObjectName: '*\wceaux.dll'
+}
+# ----------------------------------------------------------------------------------------------------
+public Password_Dumper_Activity_on_LSASS 
+{
+    metadata:
+      author: null
+      reference: https://twitter.com/jackcr/status/807385668833968128
+      creationDate: '2019-10-22'
+      score: 80
+      description: Detects process handle on LSASS process with certain access mask and
+        object type SAM_DOMAIN
+    Channel: Security
+    include:
+      EventID: '4656'
+      Data.ProcessName: C:\Windows\System32\lsass.exe
+      Data.AccessMask: '0x705'
+      Data.ObjectType: SAM_DOMAIN
+}
+# ----------------------------------------------------------------------------------------------------
+public Disabling_Windows_Event_Auditing 
+{
+    metadata:
+      author: '@neu5ron'
+      reference: https://bit.ly/WinLogsZero2Hero
+      creationDate: '2019-10-22'
+      score: 80
+      description: 'Detects scenarios where system auditing (ie: windows event log auditing)
+        is disabled. This may be used in a scenario where an entity would want to bypass
+        local logging to evade detection when windows event logging is enabled and reviewed.
+        Also, it is recommended to turn off "Local Group Policy Object Processing" via
+        GPO, which will make sure that Active Directory GPOs take precedence over local/edited
+        computer policies via something such as "gpedit.msc". Please note, that disabling
+        "Local Group Policy Object Processing" may cause an issue in scenarios of one
+        off specific GPO modifications -- however it is recommended to perform these modifications
+        in Active Directory anyways.'
+    Channel: Security
+    include:
+      EventID: '4719'
+      Data.AuditPolicyChanges: removed
+}
+# ----------------------------------------------------------------------------------------------------
+public Backup_Catalog_Deleted 
+{
+    metadata:
+      author: Florian Roth (rule), Tom U. @c_APT_ure (collection)
+      reference: https://technet.microsoft.com/en-us/library/cc742154(v=ws.11).aspx, https://www.hybrid-analysis.com/sample/ed01ebfbc9eb5bbea545af4d01bf5f1071661840480439c6e5babe8e080e41aa?environmentId=100
+      creationDate: '2019-10-22'
+      score: 60
+      description: Detects backup catalog deletions
+    Channel: Application
+    include:
+      EventID: '524'
+      Data.Source: Backup
+}
+# ----------------------------------------------------------------------------------------------------
+public Successful_Overpass_the_Hash_Attempt 
+{
+    metadata:
+      author: Roberto Rodriguez (source), Dominik Schaudel (rule)
+      reference: https://cyberwardog.blogspot.de/2017/04/chronicles-of-threat-hunter-hunting-for.html
+      creationDate: 2018/02/12
+      score: 80
+      description: Detects successful logon with logon type 9 (NewCredentials) which matches
+        the Overpass the Hash behavior of e.g Mimikatz's sekurlsa::pth module.
+    Channel: Security
+    include:
+      EventID: '4624'
+      Data.LogonType: '9'
+      Data.LogonProcessName: seclogo
+      Data.AuthenticationPackageName: Negotiate
+}
+# ----------------------------------------------------------------------------------------------------
+public Enabled_User_Right_in_AD_to_Control_User_Objects 
+{
+    metadata:
+      author: '@neu5ron'
+      reference: https://www.harmj0y.net/blog/activedirectory/the-most-dangerous-user-right-you-probably-have-never-heard-of/
+      creationDate: '2019-10-22'
+      score: 80
+      description: Detects scenario where if a user is assigned the SeEnableDelegationPrivilege
+        right in Active Directory it would allow control of other AD user objects.
+    Channel: Security
+    include:
+      EventID: '4704'
+}
+# ----------------------------------------------------------------------------------------------------
+public Kerberos_Manipulation 
+{
+    metadata:
+      author: Florian Roth
+      reference: ''
+      creationDate: '2019-10-22'
+      score: 80
+      description: This method triggers on rare Kerberos Failure Codes caused by manipulations
+        of Kerberos messages
+    Channel: Security
+    include:
+      EventID:
+      - '675'
+      - '4768'
+      - '4769'
+      - '4771'
+      Data.FailureCode:
+      - '0x9'
+      - '0xA'
+      - '0xB'
+      - '0xF'
+      - '0x10'
+      - '0x11'
+      - '0x13'
+      - '0x14'
+      - '0x1A'
+      - '0x1F'
+      - '0x21'
+      - '0x22'
+      - '0x23'
+      - '0x24'
+      - '0x26'
+      - '0x27'
+      - '0x28'
+      - '0x29'
+      - '0x2C'
+      - '0x2D'
+      - '0x2E'
+      - '0x2F'
+      - '0x31'
+      - '0x32'
+      - '0x3E'
+      - '0x3F'
+      - '0x40'
+      - '0x41'
+      - '0x43'
+      - '0x44'
+}
+# ----------------------------------------------------------------------------------------------------
+public Remote_Task_Creation_via_ATSVC_named_pipe 
+{
+    metadata:
+      author: Samir Bousseaden
+      reference: https://blog.menasec.net/2019/03/threat-hunting-25-scheduled-tasks-for.html
+      creationDate: '2019-10-22'
+      score: 60
+      description: Detects remote task creation via at.exe or API interacting with ATSVC
+        namedpipe
+    Channel: Security
+    include:
+      EventID: '5145'
+      Data.ShareName: \\*\IPC$
+      Data.RelativeTargetName: atsvc
+      Data.Accesses: '*WriteData*'
+}
+# ----------------------------------------------------------------------------------------------------
+public Rare_Schtasks_Creations 
+{
+    metadata:
+      author: Florian Roth
+      reference: ''
+      creationDate: '2019-10-22'
+      score: 40
+      description: Detects rare scheduled tasks creations that only appear a few times
+        per time frame and could reveal password dumpers, backdoor installs or other types
+        of malicious code
+    Channel: Security
+    include:
+      EventID: '4698'
+}
+# ----------------------------------------------------------------------------------------------------
+public Security_Eventlog_Cleared 
+{
+    metadata:
+      author: Florian Roth
+      reference: ''
+      creationDate: '2019-10-22'
+      score: 80
+      description: Some threat groups tend to delete the local 'Security' Eventlog using
+        certain utitlities
+    Channel: Security
+    include:
+      EventID:
+      - '517'
+      - '1102'
+}
+# ----------------------------------------------------------------------------------------------------
+public RDP_over_Reverse_SSH_Tunnel_WFP 
+{
+    metadata:
+      author: Samir Bousseaden
+      reference: https://twitter.com/SBousseaden/status/1096148422984384514
+      creationDate: 2019/02/16
+      score: 80
+      description: Detects svchost hosting RDP termsvcs communicating with the loopback
+        address and on TCP port 3389
+    Channel: Security
+    include:
+      EventID: '5156'
+      Data.SourcePort: '3389'
+      Data.DestinationAddress:
+      - '127.*'
+      - '::1'
+      Data.DestinationPort: '3389'
+      Data.SourceAddress:
+      - '127.*'
+      - '::1'
+}
+# ----------------------------------------------------------------------------------------------------
+public User_Added_to_Local_Administrators 
+{
+    metadata:
+      author: Florian Roth
+      reference: ''
+      creationDate: '2019-10-22'
+      score: 60
+      description: This rule triggers on user accounts that are added to the local Administrators
+        group, which could be legitimate activity or a sign of privilege escalation activity
+    Channel: Security
+    include:
+      EventID: '4732'
+    exclude:
+      Data.SubjectUserName: '*$'
+}
+# ----------------------------------------------------------------------------------------------------
+public Password_Change_on_Directory_Service_Restore_Mode_(DSRM)_Account 
+{
+    metadata:
+      author: Thomas Patzke
+      reference: https://adsecurity.org/?p=1714
+      creationDate: '2019-10-22'
+      score: 80
+      description: The Directory Service Restore Mode (DSRM) account is a local administrator
+        account on Domain Controllers. Attackers may change the password to gain persistence.
+    Channel: Security
+    include:
+      EventID: '4794'
+}
+# ----------------------------------------------------------------------------------------------------
+public Powerview_Add_DomainObjectAcl_DCSync_AD_Extend_Right 
+{
+    metadata:
+      author: Samir Bousseaden
+      reference: https://twitter.com/menasec1/status/1111556090137903104, https://www.specterops.io/assets/resources/an_ace_up_the_sleeve.pdf
+      creationDate: 2019/04/03
+      score: 100
+      description: backdooring domain object to grant the rights associated with DCSync
+        to a regular user or machine account using Powerview\Add-DomainObjectAcl DCSync
+        Extended Right cmdlet, will allow to re-obtain the pwd hashes of any user/computer
+    Channel: Security
+    include:
+      EventID: '5136'
+      Data.LDAPDisplayName: ntSecurityDescriptor
+      Data.Value:
+      - '*1131f6ad-9c07-11d1-f79f-00c04fc2dcd2*'
+      - '*1131f6aa-9c07-11d1-f79f-00c04fc2dcd2*'
+}
+# ----------------------------------------------------------------------------------------------------
+public Eventlog_Cleared 
+{
+    metadata:
+      author: Florian Roth
+      reference: https://twitter.com/deviouspolack/status/832535435960209408, https://www.hybrid-analysis.com/sample/027cc450ef5f8c5f653329641ec1fed91f694e0d229928963b30f6b0d7d3a745?environmentId=100
+      creationDate: '2019-10-22'
+      score: 60
+      description: One of the Windows Eventlogs has been cleared. e.g. caused by "wevtutil
+        cl" command execution
+    Channel: System
+    include:
+      EventID: '104'
+      Data.Source: Microsoft-Windows-Eventlog
+}
+# ----------------------------------------------------------------------------------------------------
+public Account_Tampering___Suspicious_Failed_Logon_Reasons 
+{
+    metadata:
+      author: Florian Roth
+      reference: https://twitter.com/SBousseaden/status/1101431884540710913
+      creationDate: '2019-10-22'
+      score: 80
+      description: This method uses uncommon error codes on failed logons to determine
+        suspicious activity and tampering with accounts that have been disabled or somehow
+        restricted.
+    Channel: Security
+    include:
+      EventID:
+      - '4625'
+      - '4776'
+      Data.Status:
+      - '0xC0000072'
+      - '0xC000006F'
+      - '0xC0000070'
+      - '0xC0000413'
+      - '0xC000018C'
+      - '0xC000015B'
+}
+# ----------------------------------------------------------------------------------------------------
+public Interactive_Logon_to_Server_Systems 
+{
+    metadata:
+      author: Florian Roth
+      reference: ''
+      creationDate: '2019-10-22'
+      score: 60
+      description: Detects interactive console logons to
+    Channel: Security
+    include:
+      EventID:
+      - '528'
+      - '529'
+      - '4624'
+      - '4625'
+      Data.LogonType: '2'
+      Data.ComputerName:
+      - '%ServerSystems%'
+      - '%DomainControllers%'
+    exclude:
+      Data.LogonProcessName: Advapi
+      Data.ComputerName: '%Workstations%'
+}
+# ----------------------------------------------------------------------------------------------------
+public Admin_User_Remote_Logon 
+{
+    metadata:
+      author: juju4
+      reference: https://car.mitre.org/wiki/CAR-2016-04-005
+      creationDate: '2019-10-22'
+      score: 40
+      description: Detect remote login by Administrator user depending on internal pattern
+    Channel: Security
+    include:
+      EventID: '4624'
+      Data.LogonType: '10'
+      Data.AuthenticationPackageName: Negotiate
+      Data.AccountName: Admin-*
+}
+# ----------------------------------------------------------------------------------------------------
+public DHCP_Server_Error_Failed_Loading_the_CallOut_DLL 
+{
+    metadata:
+      author: Dimitrios Slamaris, @atc_project (fix)
+      reference: https://blog.3or.de/mimilib-dhcp-server-callout-dll-injection.html, https://technet.microsoft.com/en-us/library/cc726884(v=ws.10).aspx,
+        https://msdn.microsoft.com/de-de/library/windows/desktop/aa363389(v=vs.85).aspx
+      creationDate: 2017/05/15
+      score: 100
+      description: This rule detects a DHCP server error in which a specified Callout
+        DLL (in registry) could not be loaded
+    Channel: System
+    include:
+      EventID:
+      - '1031'
+      - '1032'
+      - '1034'
+      Data.Source: Microsoft-Windows-DHCP-Server
+}
+# ----------------------------------------------------------------------------------------------------
+public Access_to_ADMIN$_Share 
+{
+    metadata:
+      author: Florian Roth
+      reference: ''
+      creationDate: '2019-10-22'
+      score: 40
+      description: Detects access to $ADMIN share
+    Channel: Security
+    include:
+      EventID: '5140'
+      Data.ShareName: Admin$
+    exclude:
+      Data.SubjectUserName: '*$'
+}
+# ----------------------------------------------------------------------------------------------------
+public Detects_local_user_creation 
+{
+    metadata:
+      author: Patrick Bareiss
+      reference: https://patrick-bareiss.com/detecting-local-user-creation-in-ad-with-sigma/
+      creationDate: '2019-10-22'
+      score: 40
+      description: Detects local user creation on windows servers, which shouldn't happen
+        in an Active Directory environment. Apply this Sigma Use Case on your windows
+        server logs and not on your DC logs.
+    Channel: Security
+    include:
+      EventID: '4720'
+}
+# ----------------------------------------------------------------------------------------------------
+public Possible_Impacket_SecretDump_remote_activity 
+{
+    metadata:
+      author: Samir Bousseaden
+      reference: https://blog.menasec.net/2019/02/threat-huting-10-impacketsecretdump.html
+      creationDate: '2019-10-22'
+      score: 80
+      description: Detect AD credential dumping using impacket secretdump HKTL
+    Channel: Security
+    include:
+      EventID: '5145'
+      Data.ShareName: \\*\ADMIN$
+      Data.RelativeTargetName: SYSTEM32\\*.tmp
+}
+# ----------------------------------------------------------------------------------------------------
+public RDP_Login_from_localhost 
+{
+    metadata:
+      author: Thomas Patzke
+      reference: https://www.fireeye.com/blog/threat-research/2019/01/bypassing-network-restrictions-through-rdp-tunneling.html
+      creationDate: 2019/01/28
+      score: 80
+      description: RDP login with localhost source address may be a tunnelled login
+    Channel: Security
+    include:
+      EventID: '4624'
+      Data.LogonType: '10'
+      Data.SourceNetworkAddress:
+      - ::1
+      - 127.0.0.1
+}
+# ----------------------------------------------------------------------------------------------------
+public DHCP_Server_Loaded_the_CallOut_DLL 
+{
+    metadata:
+      author: Dimitrios Slamaris
+      reference: https://blog.3or.de/mimilib-dhcp-server-callout-dll-injection.html, https://technet.microsoft.com/en-us/library/cc726884(v=ws.10).aspx,
+        https://msdn.microsoft.com/de-de/library/windows/desktop/aa363389(v=vs.85).aspx
+      creationDate: 2017/05/15
+      score: 100
+      description: This rule detects a DHCP server in which a specified Callout DLL (in
+        registry) was loaded
+    Channel: System
+    include:
+      EventID: '1033'
+}
+# ----------------------------------------------------------------------------------------------------
+public Persistence_and_Execution_at_scale_via_GPO_scheduled_task 
+{
+    metadata:
+      author: Samir Bousseaden
+      reference: https://twitter.com/menasec1/status/1106899890377052160
+      creationDate: '2019-10-22'
+      score: 80
+      description: Detect lateral movement using GPO scheduled task, ususally used to
+        deploy ransomware at scale
+    Channel: Security
+    include:
+      EventID: '5145'
+      Data.ShareName: \\*\SYSVOL
+      Data.RelativeTargetName: '*ScheduledTasks.xml'
+      Data.Accesses: '*WriteData*'
+}
+# ----------------------------------------------------------------------------------------------------
+public AD_Privileged_Users_or_Groups_Reconnaissance 
+{
+    metadata:
+      author: Samir Bousseaden
+      reference: https://blog.menasec.net/2019/02/threat-hunting-5-detecting-enumeration.html
+      creationDate: '2019-10-22'
+      score: 80
+      description: Detect priv users or groups recon based on 4661 eventid and known privileged
+        users or groups SIDs
+    Channel: Security
+    include:
+      EventID: '4661'
+      Data.ObjectType:
+      - SAM_USER
+      - SAM_GROUP
+      Data.ObjectName:
+      - '*-512'
+      - '*-502'
+      - '*-500'
+      - '*-505'
+      - '*-519'
+      - '*-520'
+      - '*-544'
+      - '*-551'
+      - '*-555'
+      - '*admin*'
+}
+# ----------------------------------------------------------------------------------------------------
+public Scanner_PoC_for_CVE_2019_0708_RDP_RCE_vuln 
+{
+    metadata:
+      author: Florian Roth (rule), Adam Bradbury (idea)
+      reference: https://twitter.com/AdamTheAnalyst/status/1134394070045003776, https://github.com/zerosum0x0/CVE-2019-0708
+      creationDate: 2019/06/02
+      score: 100
+      description: Detects the use of a scanner by zerosum0x0 that discovers targets vulnerable
+        to  CVE-2019-0708 RDP RCE aka BlueKeep
+    Channel: Security
+    include:
+      EventID: '4625'
+      Data.AccountName: AAAAAAA
+}
+# ----------------------------------------------------------------------------------------------------
+public Mimikatz_DC_Sync 
+{
+    metadata:
+      author: Benjamin Delpy, Florian Roth
+      reference: https://twitter.com/gentilkiwi/status/1003236624925413376, https://gist.github.com/gentilkiwi/dcc132457408cf11ad2061340dcb53c2
+      creationDate: 2018/06/03
+      score: 80
+      description: Detects Mimikatz DC sync security events
+    Channel: Security
+    include:
+      EventID: '4662'
+      Data.Properties:
+      - '*Replicating Directory Changes All*'
+      - '*1131f6ad-9c07-11d1-f79f-00c04fc2dcd2*'
+}
+# ----------------------------------------------------------------------------------------------------
+public Mimikatz_DC_Sync 
+{
+    metadata:
+      author: Benjamin Delpy, Florian Roth
+      reference: https://twitter.com/gentilkiwi/status/1003236624925413376, https://gist.github.com/gentilkiwi/dcc132457408cf11ad2061340dcb53c2
+      creationDate: 2018/06/03
+      score: 80
+      description: Detects Mimikatz DC sync security events
+    Channel: Security
+    include:
+      EventID: '4662'
+      Data.Properties:
+      - '*Replicating Directory Changes All*'
+      - '*1131f6ad-9c07-11d1-f79f-00c04fc2dcd2*'
+}
+# ----------------------------------------------------------------------------------------------------
+public Ursnif 
+{
+    metadata:
+      author: megan201296
+      reference: https://blog.yoroi.company/research/ursnif-long-live-the-steganography/,
+        https://blog.trendmicro.com/trendlabs-security-intelligence/phishing-campaign-uses-hijacked-emails-to-deliver-ursnif-by-replying-to-ongoing-threads/
+      creationDate: 2019/02/13
+      score: 100
+      description: Detects new registry key created by Ursnif malware.
+    Channel: Microsoft-Windows-Sysmon/Operational
+    include:
+      EventID: '13'
+      Data.TargetObject: '*\Software\AppDataLow\Software\Microsoft\\*'
+}
+# ----------------------------------------------------------------------------------------------------
+public WMI_Persistence 
+{
+    metadata:
+      author: Florian Roth
+      reference: https://twitter.com/mattifestation/status/899646620148539397, https://www.eideon.com/2018-03-02-THL03-WMIBackdoors/
+      creationDate: '2019-10-22'
+      score: 80
+      description: Detects suspicious WMI event filter and command line event consumer
+        based on event id 5861 and 5859 (Windows 10, 2012 and higher)
+    Channel: Microsoft-Windows-WMI-Activity/Operational
+    include:
+      EventID: '5861'
+
+}
+# ----------------------------------------------------------------------------------------------------
+public Rare_Scheduled_Task_Creations 
+{
+    metadata:
+      author: Florian Roth
+      reference: ''
+      creationDate: '2019-10-22'
+      score: 40
+      description: This rule detects rare scheduled task creations. Typically software
+        gets installed on multiple systems and not only on a few. The aggregation and
+        count function selects tasks with rare names.
+    Channel: Microsoft-Windows-TaskScheduler/Operational
+    include:
+      EventID: '106'
+}
+# ----------------------------------------------------------------------------------------------------
