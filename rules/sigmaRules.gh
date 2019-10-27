@@ -405,7 +405,7 @@ public Microsoft_Binary_Github_Communication
       Data.Image: C:\Windows\\*
 }
 # ----------------------------------------------------------------------------------------------------
-public WMI_Persistence___Script_Event_Consumer_File_Write 
+public WMI_Persistence_Script_Event_Consumer_File_Write 
 {
     metadata:
       author: Thomas Patzke
@@ -473,7 +473,7 @@ public UAC_Bypass_via_sdclt
       Data.TargetObject: HKEY_USERS\\*\Classes\exefile\shell\runas\command\isolatedCommand
 }
 # ----------------------------------------------------------------------------------------------------
-public Registry_Persistence_via_Explorer_Run_Key 
+public Registry_Persistence_via_Explorer_Run_Key
 {
     metadata:
       author: Florian Roth
@@ -496,49 +496,7 @@ public Registry_Persistence_via_Explorer_Run_Key
       - C:\Users\Default\\*
 }
 # ----------------------------------------------------------------------------------------------------
-public Registry_Persistence_via_Explorer_Run_Key 
-{
-    metadata:
-      author: Florian Roth
-      reference: https://researchcenter.paloaltonetworks.com/2018/07/unit42-upatre-continues-evolve-new-anti-analysis-techniques/
-      creationDate: 2018/07/18
-      score: 80
-      description: Detects a possible persistence mechanism using RUN key for Windows
-        Explorer and poiting to a suspicious folder
-    Channel: Microsoft-Windows-Sysmon/Operational
-    include:
-      EventID: '13'
-      Data.TargetObject: '*\Microsoft\Windows\CurrentVersion\Policies\Explorer\Run'
-      Data.Details:
-      - C:\Windows\Temp\\*
-      - C:\ProgramData\\*
-      - '*\AppData\\*'
-      - C:\$Recycle.bin\\*
-      - C:\Temp\\*
-      - C:\Users\Public\\*
-      - C:\Users\Default\\*
-}
-# ----------------------------------------------------------------------------------------------------
-public Suspicious_RUN_Key_from_Download 
-{
-    metadata:
-      author: Florian Roth
-      reference: https://app.any.run/tasks/c5bef5b7-f484-4c43-9cf3-d5c5c7839def/
-      creationDate: 2019/10/01
-      score: 80
-      description: Detects the suspicious RUN keys created by software located in Download
-        or temporary Outlook/Internet Explorer directories
-    Channel: Microsoft-Windows-Sysmon/Operational
-    include:
-      EventID: '13'
-      Data.Image:
-      - '*\Downloads\\*'
-      - '*\Temporary Internet Files\Content.Outlook\\*'
-      - '*\Local Settings\Temporary Internet Files\\*'
-      Data.TargetObject: '*\SOFTWARE\Microsoft\Windows\CurrentVersion\Run\\*'
-}
-# ----------------------------------------------------------------------------------------------------
-public Suspicious_RUN_Key_from_Download 
+public Suspicious_RUN_Key_from_Download
 {
     metadata:
       author: Florian Roth
@@ -729,26 +687,7 @@ public Malicious_PowerShell_Commandlet_Names
       - '*\Invoke-Mimikittenz.ps1'
 }
 # ----------------------------------------------------------------------------------------------------
-public DHCP_Callout_DLL_installation 
-{
-    metadata:
-      author: Dimitrios Slamaris
-      reference: https://blog.3or.de/mimilib-dhcp-server-callout-dll-injection.html, https://technet.microsoft.com/en-us/library/cc726884(v=ws.10).aspx,
-        https://msdn.microsoft.com/de-de/library/windows/desktop/aa363389(v=vs.85).aspx
-      creationDate: 2017/05/15
-      score: 80
-      description: Detects the installation of a Callout DLL via CalloutDlls and CalloutEnabled
-        parameter in Registry, which can be used to execute code in context of the DHCP
-        server (restart required)
-    Channel: Microsoft-Windows-Sysmon/Operational
-    include:
-      EventID: '13'
-      Data.TargetObject:
-      - '*\Services\DHCPServer\Parameters\CalloutDlls'
-      - '*\Services\DHCPServer\Parameters\CalloutEnabled'
-}
-# ----------------------------------------------------------------------------------------------------
-public DHCP_Callout_DLL_installation 
+public DHCP_Callout_DLL_installation
 {
     metadata:
       author: Dimitrios Slamaris
@@ -839,7 +778,7 @@ public Suspicious_Driver_Load_from_Temp
       Data.ImageLoaded: '*\Temp\\*'
 }
 # ----------------------------------------------------------------------------------------------------
-public WMI_Persistence___Command_Line_Event_Consumer 
+public WMI_Persistence_Command_Line_Event_Consumer 
 {
     metadata:
       author: Thomas Patzke
@@ -1081,26 +1020,7 @@ public Weak_Encryption_Enabled_and_Kerberoast
       EventID: '4738'
 }
 # ----------------------------------------------------------------------------------------------------
-public WCE_wceaux.dll_Access 
-{
-    metadata:
-      author: Thomas Patzke
-      reference: https://www.jpcert.or.jp/english/pub/sr/ir_research.html, https://jpcertcc.github.io/ToolAnalysisResultSheet
-      creationDate: '2019-10-22'
-      score: 100
-      description: Detects wceaux.dll access while WCE pass-the-hash remote command execution
-        on source host
-    Channel: Security
-    include:
-      EventID:
-      - '4656'
-      - '4658'
-      - '4660'
-      - '4663'
-      Data.ObjectName: '*\wceaux.dll'
-}
-# ----------------------------------------------------------------------------------------------------
-public WCE_wceaux.dll_Access 
+public WCE_wceaux_dll_Access 
 {
     metadata:
       author: Thomas Patzke
@@ -1623,22 +1543,6 @@ public Mimikatz_DC_Sync
       - '*1131f6ad-9c07-11d1-f79f-00c04fc2dcd2*'
 }
 # ----------------------------------------------------------------------------------------------------
-public Mimikatz_DC_Sync 
-{
-    metadata:
-      author: Benjamin Delpy, Florian Roth
-      reference: https://twitter.com/gentilkiwi/status/1003236624925413376, https://gist.github.com/gentilkiwi/dcc132457408cf11ad2061340dcb53c2
-      creationDate: 2018/06/03
-      score: 80
-      description: Detects Mimikatz DC sync security events
-    Channel: Security
-    include:
-      EventID: '4662'
-      Data.Properties:
-      - '*Replicating Directory Changes All*'
-      - '*1131f6ad-9c07-11d1-f79f-00c04fc2dcd2*'
-}
-# ----------------------------------------------------------------------------------------------------
 public Ursnif 
 {
     metadata:
@@ -1665,7 +1569,13 @@ public WMI_Persistence
         based on event id 5861 and 5859 (Windows 10, 2012 and higher)
     Channel: Microsoft-Windows-WMI-Activity/Operational
     include:
-      EventID: '5861'
+      EventID: 
+      - '5861'
+      UserData.Operation_ESStoConsumerBinding.CONSUMER:
+      - "*ActiveScriptEventConsumer*"
+      - "*CommandLineEventConsumer*"
+      UserData.Operation_ESStoConsumerBinding.PossibleCause:
+      - "*CommandLineTemplate*"
 
 }
 # ----------------------------------------------------------------------------------------------------

@@ -113,29 +113,3 @@ public PTHAttack_2
     exclude:
       Data.TargetUserName: "ANONYMOUS LOGON"
 }
-
-public AccountCreation
-{
-    metadata:
-      author: "AbdulRhman Alfaifi"
-      reference: "Init Rules"
-      creationDate: "17/10/2019"
-      score: 50
-      description: "Account Creation was detected"
-    Channel: "Security"
-    include:
-      EventID: "4720"
-}
-
-public EventLogsCleared
-{
-    metadata:
-      author: "AbdulRhman Alfaifi"
-      reference: "Init Rules"
-      creationDate: "17/10/2019"
-      score: 100
-      description: "Windows Event Logs Cleared"
-    Channel: "Security"
-    include:
-      EventID: "4720"
-}
