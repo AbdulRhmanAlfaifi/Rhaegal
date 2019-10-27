@@ -86,6 +86,7 @@ if "__main__" == __name__:
         raise Exception(f"{__file__} was not able to load the rules !")
     
     if args.logsPath:
-        regal.MultiProcessingMatchLogDirectory(args.logsPath,args.processes)
+        regal.MatchLogDirectory(args.logsPath)
+        # regal.MultiProcessingMatchLogDirectory(args.logsPath,args.processes)
     elif args.log:
         regal.MatchLogFile(args.log)
