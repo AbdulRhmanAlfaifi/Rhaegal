@@ -1,4 +1,4 @@
-![Rhaegal](C:\Users\xAbdulRhman\Documents\GithubRhaegal\Rhaegal\screenshots\RhaegalLogo.png)
+![Rhaegal](screenshots/RhaegalLogo.png)
 
 # What is Rhaegal ?
 
