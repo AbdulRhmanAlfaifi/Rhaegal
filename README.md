@@ -1,5 +1,6 @@
-![Rhaegal](screenshots/RhaegalLogo.png)
-
+<p align="center">
+  <img src="screenshots/RhaegalLogo.png">
+</p>
 # What is Rhaegal ?
 
 Rhaegal is a tool written in Python 3  used to scan Windows Event Logs for suspicious logs. Rhaegal uses custom rule format to detect suspicious/malicious logs, the rules schema will be discussed in details later on. This project contains two main script the first is `RhaegalLib.py` which is the main script that handles Windows Event Logs parsing and rules parsing and validation. The second script is `Rhaegal.py` which is a script that takes the user options and uses `RhaegalLib.py` script to search through Windows Event Logs with the specified ruleset.
