@@ -2,8 +2,8 @@ import re
 import yaml
 from io import StringIO
 import fnmatch
-import Evtx.Evtx as evtx
-from lxml import etree
+from evtx import PyEvtxParser
+import json
 from datetime import datetime
 import threading
 import os
@@ -12,60 +12,122 @@ import logging
 import csv
 import itertools
 from string import ascii_letters,digits
+import ifaddr
 
 __author__ = "AbdulRhman Alfaifi"
-__version__ = "1.0.1"
+__version__ = "1.2.1"
 __maintainer__ = "AbdulRhman Alfaifi"
 __license__ = "GPL"
-__status__ = "Production"
+__status__ = "Development"
+
+class Variables:
+    def __init__(self):
+        self.GetEnvVariables()
+        self.GetIPAddresses()
+    
+    def GetEnvVariables(self):
+        try:
+            for env in os.environ:
+                setattr(self,env,os.environ[env])
+            return True
+        except:
+            return False
+
+    def GetIPAddresses(self):
+        try:
+            ips = []
+            for inet in ifaddr.get_adapters():
+                for ip in inet.ips:
+                    if isinstance(ip.ip,str):
+                        ips.append(ip.ip)
+            self.IPAddresses = ips
+            return ips
+        except:
+            return False
+
+class Modifier:
+    def __init__(self,modstr):
+        results = self.ParseModifier(modstr)
+        self.field = results["field"]
+        self.operation = results["operation"]
+        self.value = results["value"]
+    
+    def ParseModifier(self,modstr):
+        parts = modstr.split()
+        results = {}
+        if " $rex " in modstr:
+            parts = modstr.split(" $rex ")
+            results["field"] = parts[0]
+            results["operation"] = "$rex"
+            results["value"] = parts[1]
+        else:
+            if len(parts) == 3:
+                results["field"] = parts[0]
+                results["operation"] = parts[1]
+                results["value"] = int(parts[2])
+        return results
+
+    def Check(self,event):
+        eventValue = event.EventData.get(self.field)
+        if eventValue:
+            if self.operation == ">":
+                return len(eventValue) > self.value
+            elif self.operation == "<":
+                return len(eventValue) < self.value
+            elif self.operation == "<=":
+                return len(eventValue) <= self.value
+            elif self.operation == ">=":
+                return len(eventValue) >= self.value
+            elif self.operation == "==":
+                return len(eventValue) == self.value
+            elif self.operation == "$rex":
+                return bool(re.findall(f"^{self.value}$",eventValue))
 
 # A class that represents an event record. it takes 'lxml' object as input.
 class Event:
     def __init__(self,record):
         self.RawRecord = record
-        self.SystemData = {}
-        self.OtherData = {}
-        for systemChild in record[0]:
-            onlyTag = systemChild.tag.split("}")[-1]
-            if systemChild.text != None:
-               self.SystemData.update({f"{onlyTag}":str(systemChild.text)})
-            for atr in systemChild.attrib:
-                self.SystemData.update({f"{onlyTag}.{atr}":str(systemChild.get(atr))})
-        self.EventData = self.SystemData
-        count = 0
-        for child in record[1::]:
-            tag = child.tag.split("}")[1]
-            if tag == "EventData":
-                for EventDataChild in child:
-                    if EventDataChild.get("Name") == None:
-                        self.EventData.update({f"Data{count}":str(EventDataChild.text)})
-                    else:
-                        self.EventData.update({f"Data.{EventDataChild.get('Name')}":str(EventDataChild.text)})
-                    count+=1
-            else:
-                self.ParseChildren(child)
-                self.EventData.update(self.OtherData)
+        self.EventData = self.BuildEventData(record["Event"])
+        # init System fields
+        
         for key, value in self.EventData.items():
             setattr(self, key.replace(".",""), value)
 
-    # Takes lxml Element as argument and updates the self.OtherData dictionary
-    def ParseChildren(self,parent,prepend=None):
-        if prepend != None:
-            tag = prepend+"."+parent.tag.split('}')[1]
-        else:
-            tag = parent.tag.split('}')[1]
-        for key,val in parent.items():
-            self.OtherData.update({f"{tag}.{key}":val})
-        if parent.text != None:
-            self.OtherData.update({tag:parent.text})
-        # for attr in parent.
-        for child in parent:
-            if prepend:
-                prepend = f"{prepend}.{parent.tag.split('}')[1]}.{child.tag.split('}')[1]}"
+    def BuildEventData(self,data,parentName=None):
+        results = {}
+        for key,val in data.items():
+            if key == "xmlns":
+                continue
+            if isinstance(val,dict):
+                if parentName:
+                    if key == "#attributes":
+                        results.update(self.BuildEventData(val,f"{parentName}"))
+                    elif key == "Data" and parentName == "Data":
+                        results.update(self.BuildEventData(val,f"{parentName}"))
+                    else:
+                        results.update(self.BuildEventData(val,f"{parentName}.{key}"))
+                else:
+                    if key == "EventData":
+                        results.update(self.BuildEventData(val,"Data"))
+                    elif key == "System":
+                        results.update(self.BuildEventData(val))
+                    else:
+                        results.update(self.BuildEventData(val,key))
             else:
-                prepend = f"{parent.tag.split('}')[1]}.{child.tag.split('}')[1]}"
-            for children in child:
-                self.ParseChildren(children,prepend)
+                if parentName:
+                    if key == "#text":                          
+                        if isinstance(val,list):
+                            for i in range(len(val)):
+                                results.update({f"{parentName}{i}":str(val[i])})
+                        else:
+                            results.update({f"{parentName}":str(val)})
+                    else:
+                        results.update({f"{parentName}.{key}":str(val)})
+                else:
+                    results.update({key:str(val)})
+
+        return results
+
     def __str__(self):
         return str(self.EventData)
 
@@ -91,6 +153,9 @@ class Rule:
         self.score = ruleData.get("metadata").get("score")
         self.channel = ruleData.get("Channel")
         self.exclude = ruleData.get("exclude")
+        self.modifiers = ruleData.get("modifiers")
+        self.returns = ruleData.get("returns")
+        self.variables = ruleData.get("variables")
         self.validateRule()
         
     def validateRule(self):
@@ -103,6 +168,18 @@ class Rule:
             self.score = 10
         if self.exclude == None:
             self.exclude = {}
+        if not self.modifiers:
+            self.modifiers = []
+        if not self.variables:
+            self.variables = []
+        if not self.returns:
+            self.returns = []
+        if not isinstance(self.returns,list):
+            raise TypeError(f"Error in the rule named '{self.name}'. The 'returns' section should be a list not {type(self.returns)}")    
+        if not isinstance(self.modifiers,list):
+            raise TypeError(f"Error in the rule named '{self.name}'. The 'modifiers' section should be a list not {type(self.modifiers)}")
+        if not isinstance(self.variables,list):
+            raise TypeError(f"Error in the rule named '{self.name}'. The 'variables' section should be a list not {type(self.variables)}")
         if self.type != "public" and self.type != "private":
             raise TypeError(f"Error in the rule named '{self.name}'. The allowed rule type are 'public' or 'private' but you used '{self.type}'")
         for char in self.name:
@@ -124,9 +201,11 @@ class Rule:
 class Rhaegal:
     def __init__(self,rulePath=None,outputFormat="CSV",rulesDir=None,logger=None):
         self.logger = logger
+        self.Variables = Variables()
         self.outputFormat = outputFormat
         self.PublicRulesContainsPrivateRules = []
-        rex = re.compile('((public|private) .*(\n){0,1}{[\w\d\s\n\:\-\"\/\.\*\?\#\\\\\'\,\(\)\=\@\$]+})')
+        rex = re.compile('((public|private) .*(\n){0,1}\{(.*|\s)+?\})')
+        # rex = re.compile('((public|private) .*(\n){0,1}{(\n.*)+})')
         rules=""
         self.channels=[]
         if not rulePath and rulesDir:
@@ -177,11 +256,25 @@ class Rhaegal:
                 raise ValueError(f"Error in the rule named '{rule.name}'. Detected rule name duplication")
 
     # Takes a string and a pattren. Return True if the pattren matches the string or False if it does not.
-    def StringMatch(self,string,pattern):
-        if string and pattern:
-            string = string.lower()
-            pattern = pattern.lower()
-        return fnmatch.fnmatch(string,pattern)
+    def StringMatch(self,string,pattern,event=None):
+        if pattern.startswith("$"):
+            if pattern == "$IP":
+                return string in self.Variables.IPAddresses    
+            else:
+                try:
+                    return self.StringMatch(string,getattr(self.Variables,pattern[1::]))    
+                except AttributeError:
+                    pass
+                eventField = event.get(pattern[1::])
+                if eventField:
+                    return self.StringMatch(string,eventField)    
+                else:
+                    return False
+        else:
+            if string and pattern:
+                string = string.lower()
+                pattern = pattern.lower()
+            return fnmatch.fnmatch(string,pattern)
 
     # The main matching function. tasks rule object and event object as input then returns the matched strings if the rule got triggered or False if not triggered.
     def match(self,rule,event):
@@ -206,7 +299,7 @@ class Rhaegal:
                                     self.logger.warning(f"Unable to find the field '{key}' from the rule '{rule.name}' in the following event : \n {event}")
                                 oneMatched = False
                                 break
-                            if self.StringMatch(event.EventData.get(key),s):
+                            if self.StringMatch(event.EventData.get(key),s,event.EventData):
                                 oneMatched = oneMatched or True
                                 matchStrs.append(event.EventData.get(key))
                             else:
@@ -219,7 +312,7 @@ class Rhaegal:
                             if self.logger:
                                 self.logger.warning(f"Unable to find the field '{key}' from the rule '{rule.name}' in the following event : \n {event}")
                         
-                        if event.EventData.get(key) != None and self.StringMatch(event.EventData.get(key),value):
+                        if event.EventData.get(key) != None and self.StringMatch(event.EventData.get(key),value,event.EventData):
                             triggired = triggired and True
                             matchStrs.append(event.EventData.get(key))
                         else:
@@ -245,7 +338,7 @@ class Rhaegal:
                                     self.logger.warning(f"Unable to find the field '{key}' from the rule '{rule.name}'")
                                 oneMatched = True
                                 break
-                            if self.StringMatch(event.EventData.get(key),s):
+                            if self.StringMatch(event.EventData.get(key),s,event.EventData):
                                 oneMatched = oneMatched or True
                             else:
                                 oneMatched = oneMatched or False
@@ -254,7 +347,7 @@ class Rhaegal:
                         if event.EventData.get(key) == None:
                             if self.logger:
                                 self.logger.warning(f"Unable to find the field '{key}' from the rule '{rule.name}'")
-                        if event.EventData.get(key) != None and self.StringMatch(event.EventData.get(key),value):
+                        if event.EventData.get(key) != None and self.StringMatch(event.EventData.get(key),value,event.EventData):
                             triggired = triggired and False
                         else:
                             triggired = triggired and True
@@ -262,12 +355,27 @@ class Rhaegal:
                     if self.logger:
                         self.logger.error(e,exc_info=True)
                     pass
+        
+        modFlag = True
+
+        for modifier in rule.modifiers:
+            mod = Modifier(modifier)
+            if mod.Check(event):
+                modFlag = modFlag and True
+                matchStrs.append(f"MOD : {modifier}")
+            else:
+                modFlag = modFlag and False
+                break
+        
+        triggired = modFlag and triggired
+        
         if triggired:
             if self.logger:
                 self.logger.info(f"The rule named '{rule.name}' triggered on the event '{event}'")
             return matchStrs
         else:
             return False
+
     # Takes an event object as input and look that event on all of the available rules then display alert of the alert got triggered.
     def matchAll(self,event):
         for rule in self.ruleSet:
@@ -291,30 +399,50 @@ class Rhaegal:
             row = StringIO()
             writer = csv.writer(row, quoting=csv.QUOTE_NONNUMERIC,lineterminator="\n")
             if privateRule:
-                rules = []
-                events = []
                 recordIDs = []
+                triggeredEventsData = {}
+                privRuleNames = rule.include.get("rule")
+                privateRules = []
+                for r in self.ruleSet:
+                    if r.name in privRuleNames:
+                        privateRules.append(r)
+
+                for r in privateRules:
+                    for e in TriggeredEvents:
+                        if r.channel == e.Channel:
+                            if r.returns:
+                                fields = {}
+                                for field in r.returns:
+                                    fields.update({field:e.EventData.get(field)})
+                                triggeredEventsData[r.name] = fields
+                            else:
+                                triggeredEventsData[r.name] = e.RawRecord
                 for event in TriggeredEvents:
                     recordIDs.append(event.EventRecordID)
-                data = [datetime.now(), recordIDs, rule.name, rule.score, rule.description, rule.reference, results, "PRIVATE RULE"]
+                data = [event.TimeCreatedSystemTime, recordIDs, rule.name, rule.score, rule.description, rule.reference, results, triggeredEventsData]
             else:
-                data = [datetime.now(), event.EventRecordID, rule.name, rule.score, rule.description, rule.reference, results, etree.tostring(event.RawRecord,pretty_print=False).decode("utf-8").replace("\n","")]
+                if rule.returns:
+                    returns = {}
+                    for field in rule.returns:
+                        returns[field] = event.EventData.get(field)
+                    data = [event.TimeCreatedSystemTime, event.EventRecordID, rule.name, rule.score, rule.description, rule.reference, results, returns]
+                else:
+                    data = [event.TimeCreatedSystemTime, event.EventRecordID, rule.name, rule.score, rule.description, rule.reference, results, event.RawRecord]
            
             writer.writerow(data)
             print(row.getvalue(),end="")
     
     # Reads an EVTX file then process all of the event records.
     def MatchLogFile(self,filePath):
-        with evtx.Evtx(filePath) as log:
-            for record in log.records():
-                try:
-                    xmlObj = record.lxml()
-                    event = Event(xmlObj)
-                    self.matchAll(event)
-                except (OSError, KeyError) as e:
-                    if self.logger:
-                        self.logger.error(e,exc_info=True)
-                    continue
+        parser = PyEvtxParser(filePath)
+        for record in parser.records_json():
+            try:
+                data = json.loads(record["data"])
+                event = Event(data)
+                self.matchAll(event)
+            except Exception as e:
+                if self.logger:
+                    self.logger.error(e,exc_info=True)
     # Go through a directory looking for EVTX file then start processing them (single process).
     def MatchLogDirectory(self,directoryPath):
         if self.logger:
@@ -337,7 +465,7 @@ class Rhaegal:
             datesList = []
             relativeTime = 0
             for event in EventSet:
-                datesList.append(datetime.strptime(event.TimeCreatedSystemTime,"%Y-%m-%d %H:%M:%S.%f"))
+                datesList.append(datetime.strptime(event.TimeCreatedSystemTime,"%Y-%m-%dT%H:%M:%S.%fZ"))
             datesList.sort()
             relativeTime = (datesList[len(datesList)-1] - datesList[0]).total_seconds() * 1000
             relativeTime = int(relativeTime if relativeTime > 0 else relativeTime * -1)
@@ -360,27 +488,31 @@ class Rhaegal:
                         privRules.append(rule)
                         privRulesChannels.append(rule.channel.lower())
             for filePath in self.LogsToProcess:
-                with evtx.Evtx(filePath) as log:
-                    for record in log.records():
-                        try:
-                            xmlObj = record.lxml()
-                            event = Event(xmlObj)
-                            if event.Channel.lower() in privRulesChannels:
-                                for prirule in privRules:
-                                    if self.match(prirule,event):
-                                        if triggered == None:
-                                            triggered = True
-                                        triggered = triggered and True
-                                        if not TriggeredEvents.get(prirule):
-                                            TriggeredEvents[prirule] = [event]
-                                        else:
-                                            TriggeredEvents[prirule].append(event)
-                            else:
-                                break
-                        except (OSError, KeyError) as e:
-                            if self.logger:
-                                self.logger.error(e,exc_info=True)
-                            continue
+                parser = PyEvtxParser(filePath)
+                for record in parser.records_json():
+                    try:
+                        data = json.loads(record["data"])
+                        event = Event(data)
+                        if event.Channel.lower() in privRulesChannels:
+                            for prirule in privRules:
+                                if self.match(prirule,event):
+                                    if triggered == None:
+                                        triggered = True
+                                    triggered = triggered and True
+                                    if not TriggeredEvents.get(prirule):
+                                        TriggeredEvents[prirule] = [event]
+                                    else:
+                                        TriggeredEvents[prirule].append(event)
+                        else:
+                            break
+                    except (OSError, KeyError) as e:
+                        if self.logger:
+                            self.logger.error(e,exc_info=True)
+                        continue
+                    except Exception as e:
+                        if self.logger:
+                            self.logger.error(e,exc_info=True)
+                            
             if len(TriggeredEvents) != len(privRules):
                 return False
 

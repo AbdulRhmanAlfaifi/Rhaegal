@@ -1,6 +1,6 @@
 # Using Rhaegal API
 
-In this section we will learn how to use Rhaegal on python scripts using `RhaegalLib.py`. RhaegalLib contains three class, And they are as follows:
+In this section we will learn how to use Rhaegal on python scripts using `RhaegalLib.py`. RhaegalLib contains three class main, And they are as follows:
 
 * `Event` class : which is the class that responsible to parse windows event logs. Each object of this class represent a record/event.
 * `Rule` class : each object of this class represents a Rhaegal rule.
@@ -16,7 +16,7 @@ The following tables breakdown the functions and properties for each class:
 
 | Name        | Description                                                  |
 | ----------- | ------------------------------------------------------------ |
-| Event(lxml) | This is the constructor of the class that takes one argument of type `lxml` and return an Event object |
+| Event(dict) | This is the constructor of the class that takes one argument of type `dict` and return an Event object |
 
 ### Properties
 
@@ -51,6 +51,7 @@ This class generates properties dynamically, So there is not a fixed number of p
 | channel      | the channel of the log that this rule applies to          | String     |
 | include      | this field contains all the fields in the include section | Dictionary |
 | exclude      | this field contains all the fields in the exclude section | Dictionary |
+
 
 ## Rhaegal
 

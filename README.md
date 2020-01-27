@@ -1,3 +1,5 @@
+![Rhaegal](C:\Users\xAbdulRhman\Documents\GithubRhaegal\Rhaegal\screenshots\RhaegalLogo.png)
+
 # What is Rhaegal ?
 
 Rhaegal is a tool written in Python 3  used to scan Windows Event Logs for suspicious logs. Rhaegal uses custom rule format to detect suspicious/malicious logs, the rules schema will be discussed in details later on. This project contains two main script the first is `RhaegalLib.py` which is the main script that handles Windows Event Logs parsing and rules parsing and validation. The second script is `Rhaegal.py` which is a script that takes the user options and uses `RhaegalLib.py` script to search through Windows Event Logs with the specified ruleset.
@@ -8,7 +10,7 @@ Rhaegal is a tool written in Python 3  used to scan Windows Event Logs for suspi
 
 1. Download the zip file or clone this repository using the following command:
 
-   `git clone <REPO_URL>`
+   `git clone https://github.com/AbdulRhmanAlfaifi/Rhaegal.git`
 
    Then execute the following command to download the dependences :
 
@@ -62,7 +64,7 @@ optional arguments:
 In the following example I ran the tool on log samples with the ruleset on this repository. The tool outputs the rules in CSV format on this format:
 
 ```
-"DateAndTime","EventRecordID/s","RuleName","RuleScore","RuleDiscription","RuleRefrence","MatchedStr","EventRawData"
+"DateAndTime","EventRecordID/s","RuleName","RuleScore","RuleDiscription","RuleRefrence","MatchedStr","Rule Return"
 ```
 
  The following is an example of the output:
@@ -71,7 +73,7 @@ In the following example I ran the tool on log samples with the ruleset on this 
 
 # Can I use SIGMA rules with this tool ?
 
-Yes you can ! I wrote  a script tat translates SIGMA rules to Rhaegal rules. The script could be found on this repository on `Tools/SigmaToRhaegal.py`. Here is how to use the tool:
+Yes you can ! I wrote  a script that translates SIGMA rules to Rhaegal rules. The script could be found on this repository on `Tools/SigmaToRhaegal.py`. Here is how to use the tool:
 
 ```
 usage: SigmaToRhaegal.py [-h] -r RULESDIR -o OUTPUT

