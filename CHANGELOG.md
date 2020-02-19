@@ -1,6 +1,9 @@
 # Change Log
 
 ## RhaegalLib
+### Version 1.2.2 - 19/02/2020
+
+* Hot Fix
 
 ### Version 1.2.1 - 27/01/2020
 
