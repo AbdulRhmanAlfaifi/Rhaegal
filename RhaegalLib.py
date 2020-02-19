@@ -15,7 +15,7 @@ from string import ascii_letters,digits
 import ifaddr
 
 __author__ = "AbdulRhman Alfaifi"
-__version__ = "1.2.1"
+__version__ = "1.2.2"
 __maintainer__ = "AbdulRhman Alfaifi"
 __license__ = "GPL"
 __status__ = "Development"
@@ -123,7 +123,7 @@ class Event:
                             results.update({f"{parentName}":str(val)})
                     else:
                         results.update({f"{parentName}.{key}":str(val)})
-                else:
+                elif val != None:
                     results.update({key:str(val)})
 
         return results

@@ -216,3 +216,112 @@ private PsExecSeriveInstalled
     - Security.UserID
     - Data.ImagePath
 }
+
+public Add_Type_cmdlet_execution
+{
+    metadata:
+      author: "AbdulRhman Alfaifi"
+      reference: "internal research"
+      creationDate: "10/02/2020"
+      score: 100
+      description: "Deleted execution of Add-Type cmdlet which allow the execution of C# code."
+    Channel: "Windows PowerShell"
+    include:
+      EventID: "800"
+}
+
+public PSSession_Outgoing_Connection
+{
+    metadata:
+      author: "AbdulRhman Alfaifi"
+      reference: "internal research"
+      creationDate: "19/02/2020"
+      score: 70
+      description: "New PSSesion connection from client side"
+    Channel: "Security"
+    include:
+      EventID: "4648"
+      Data.ProcessName: "*powershell.exe*"
+    returns:
+    - Data.TargetUserName
+    - Data.TargetDomainName
+    - Data.TargetServerName
+    - Data.TargetInfo
+    - Data.ProcessName
+}
+
+public PSSession_Outgoing_Connection_2
+{
+    metadata:
+      author: "AbdulRhman Alfaifi"
+      reference: "internal research"
+      creationDate: "19/02/2020"
+      score: 70
+      description: "New PSSesion connection from client side"
+    Channel: "Microsoft-Windows-WinRM/Operational"
+    include:
+      EventID: "6"
+    returns:
+    - Data.connection
+    - Security.UserID
+}
+
+public PSSession_Outgoing_Connection_2
+{
+    metadata:
+      author: "AbdulRhman Alfaifi"
+      reference: "internal research"
+      creationDate: "19/02/2020"
+      score: 70
+      description: "New PSSesion connection from client side"
+    Channel: "Microsoft-Windows-WinRM/Operational"
+    include:
+      EventID: "6"
+}
+
+public PSSession_Session_Started
+{
+    metadata:
+      author: "AbdulRhman Alfaifi"
+      reference: "internal research"
+      creationDate: "19/02/2020"
+      score: 70
+      description: "New PSSesion Session Started"
+    Channel: "Windows PowerShell"
+    include:
+      EventID: "400"
+      Data0: "Available"
+    returns:
+    - Data0
+    - Data2
+}
+
+public PSSession_Session_Ended
+{
+    metadata:
+      author: "AbdulRhman Alfaifi"
+      reference: "internal research"
+      creationDate: "19/02/2020"
+      score: 70
+      description: "New PSSesion Session Ended"
+    Channel: "Windows PowerShell"
+    include:
+      EventID: "403"
+      Data0: "Stopped"
+    returns:
+    - Data0
+    - Data2
+}
+
+public PSSession_Incomming_Ended
+{
+    metadata:
+      author: "AbdulRhman Alfaifi"
+      reference: "internal research"
+      creationDate: "19/02/2020"
+      score: 70
+      description: "New PSSesion Incomming Connection"
+    Channel: "Microsoft-Windows-WinRM/Operational"
+    include:
+      EventID: "31"
+}
