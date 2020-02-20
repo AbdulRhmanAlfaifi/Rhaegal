@@ -266,19 +266,6 @@ public PSSession_Outgoing_Connection_2
     - Security.UserID
 }
 
-public PSSession_Outgoing_Connection_2
-{
-    metadata:
-      author: "AbdulRhman Alfaifi"
-      reference: "internal research"
-      creationDate: "19/02/2020"
-      score: 70
-      description: "New PSSesion connection from client side"
-    Channel: "Microsoft-Windows-WinRM/Operational"
-    include:
-      EventID: "6"
-}
-
 public PSSession_Session_Started
 {
     metadata:
