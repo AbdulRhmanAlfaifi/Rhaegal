@@ -50,14 +50,15 @@ def Unzip():
 
 if "__main__" == __name__:
     multiprocessing.freeze_support()
-    # Unzip()
+    args = parser.parse_args()
+    if not os.path.exists(args.rulesPath):
+        Unzip()
     logger = InitLogger(debug=False)
     p = psutil.Process(os.getpid())
     if "win" in sys.platform:
         p.nice(psutil.IDLE_PRIORITY_CLASS)
     else:
         p.nice(20)
-    args = parser.parse_args()
 
     if args.version:
         print(f"Rhaegal v{__version__}")
