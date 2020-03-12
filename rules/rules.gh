@@ -314,3 +314,20 @@ public PSSession_Incomming_Ended
     include:
       EventID: "31"
 }
+
+public Exchange_Exploit_CVE_2020_0688_Detected
+{
+    metadata:
+      author: "AbdulRhman Alfaifi"
+      reference: "internal research"
+      creationDate: "11/03/2020"
+      score: 400
+      description: "Exchange expoint (cve-2020-0688) has been detected"
+    Channel: "Application"
+    include:
+      EventID: "4"
+      Data1: "*/ecp/default.aspx?__VIEWSTATEGENERATOR=*&__VIEWSTATE=*"
+    returns:
+    - Channel
+    - Data1
+}
