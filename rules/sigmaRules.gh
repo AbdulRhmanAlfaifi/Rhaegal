@@ -1451,9 +1451,7 @@ public RDP_Login_from_localhost
     include:
       EventID: '4624'
       Data.LogonType: '10'
-      Data.SourceNetworkAddress:
-      - ::1
-      - 127.0.0.1
+      Data.IpAddress: $IP
 }
 # ----------------------------------------------------------------------------------------------------
 public DHCP_Server_Loaded_the_CallOut_DLL 
