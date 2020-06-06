@@ -7,15 +7,16 @@ import json
 from datetime import datetime
 import threading
 import os
-import multiprocessing
+import threading
 import logging
 import csv
 import itertools
 from string import ascii_letters,digits
 import ifaddr
+import queue
 
 __author__ = "AbdulRhman Alfaifi"
-__version__ = "1.2.2"
+__version__ = "1.3"
 __maintainer__ = "AbdulRhman Alfaifi"
 __license__ = "GPL"
 __status__ = "Development"
@@ -55,7 +56,11 @@ class Modifier:
     def ParseModifier(self,modstr):
         parts = modstr.split()
         results = {}
-        if " $rex " in modstr:
+        if modstr.lower().startswith("search "):
+            results["field"] = parts[0]
+            results["operation"] = parts[1]
+            results["value"] = " ".join(parts[2::])
+        elif " $rex " in modstr:
             parts = modstr.split(" $rex ")
             results["field"] = parts[0]
             results["operation"] = "$rex"
@@ -67,7 +72,34 @@ class Modifier:
                 results["value"] = int(parts[2])
         return results
 
-    def Check(self,event):
+    def StringMatch(self,string,pattern,event,variables):
+        if pattern.startswith("$"):
+            if pattern == "$IP":
+                for IP in variables.IPAddresses:
+                    if IP in string:
+                        return True
+            else:
+                try:
+                    return self.StringMatch(string,f"*{getattr(variables,pattern[1::])}*",event,variables)    
+                except AttributeError:
+                    pass
+                eventField = event.EventData.get(pattern[1::])
+                if eventField:
+                    return self.StringMatch(string,f"*{eventField}*",event,variables)    
+                else:
+                    return False
+        if string and pattern:
+            string = string.lower()
+            pattern = pattern.lower()
+        return fnmatch.fnmatch(string,pattern)
+
+    def Check(self,event,variables):
+        if self.field.lower() == "search" and self.operation == "$rex":
+            eventData = json.dumps(event.EventData)
+            return bool(re.findall(f"{self.value}",eventData))
+        elif self.field.lower() == "search" and self.operation == "$str":
+            eventData = json.dumps(event.EventData)
+            return self.StringMatch(eventData,self.value,event,variables)
         eventValue = event.EventData.get(self.field)
         if eventValue:
             if self.operation == ">":
@@ -161,9 +193,12 @@ class Rule:
     def validateRule(self):
         charset = ascii_letters+digits+"_().$"
         if not isinstance(self.include,dict):
-            raise TypeError(f"Error in the rule named '{self.name}'. The 'include' should be a dictionary.")
-        if self.channel == None and not self.include.get("rule"):
-            raise TypeError(f"Error in the rule named '{self.name}'. The filed 'Channel' is required.")
+            if not isinstance(self.exclude,dict):
+                if not isinstance(self.modifiers,list):
+                    raise TypeError(f"Error in the rule named '{self.name}'. The 'include' should be a dictionary.")
+        if self.channel == None and self.include:
+            if not self.include.get("rule"):
+                raise TypeError(f"Error in the rule named '{self.name}'. The filed 'Channel' is required.")
         if not self.score:
             self.score = 10
         if self.exclude == None:
@@ -187,19 +222,51 @@ class Rule:
                 raise ValueError(f"Error in the rule named '{self.name}'. The character '{char}' is not allowed in the rule name. The rule name should only contains letters, numbers and '_'")
         if not self.description:
             raise ValueError(f"Error in the rule named '{self.name}'. The 'metadata' secition should at least contain 'description' field")
-        if self.type == "public" and self.include.get("rule"):
-            if not self.include.get("rule") or not self.include.get("if"):
-                raise ValueError(f"Error in the rule named '{self.name}'. private rule wrapper should contain 'rule' & 'if' fields inside 'include' section")
-            if not self.include.get("if").get("within"):
-                raise ValueError(f"Error in the rule named '{self.name}'.The 'if' field should contain 'within' field")
-            if not isinstance(self.include.get("rule"),list):
-                raise ValueError(f"Error in the rule named '{self.name}'.The 'rule' field should be a 'list' not '{type(self.include.get('rule'))}'")
+        if self.include:
+            if self.type == "public" and self.include.get("rule"):
+                if not self.include.get("rule") or not self.include.get("if"):
+                    raise ValueError(f"Error in the rule named '{self.name}'. private rule wrapper should contain 'rule' & 'if' fields inside 'include' section")
+                if not self.include.get("if").get("within"):
+                    raise ValueError(f"Error in the rule named '{self.name}'.The 'if' field should contain 'within' field")
+                if not isinstance(self.include.get("rule"),list):
+                    raise ValueError(f"Error in the rule named '{self.name}'.The 'rule' field should be a 'list' not '{type(self.include.get('rule'))}'")
     def __str__(self):
         return str(self.__dict__)
+
+
+class Alert:
+    def __init__(self,event,rule,matchedStrings,privateRule=False,record=None):
+        self.event = event
+        self.rule = rule
+        self.isPrivateRule = True if rule.type.lower() == "private" else False
+        self.matchedStrings = matchedStrings
+        self.record = record
+
+     # Formates the output in the choosen format.
+    def outputAlert(self,file=None):
+        if file:
+            out = file
+        else:
+            out = StringIO()
+        writer = csv.writer(out, quoting=csv.QUOTE_NONNUMERIC,lineterminator="\n")
+        if self.record:
+            writer.writerow(self.record)
+        else:
+            if self.rule.returns:
+                returns = {}
+                for field in self.rule.returns:
+                    returns[field] = self.event.EventData.get(field)
+                data = [self.event.TimeCreatedSystemTime, self.event.EventRecordID, self.rule.name, self.rule.score, self.rule.description, self.rule.reference, self.matchedStrings, returns]
+            else:
+                data = [self.event.TimeCreatedSystemTime, self.event.EventRecordID, self.rule.name, self.rule.score, self.rule.description, self.rule.reference, self.matchedStrings, self.event.RawRecord]
+            writer.writerow(data)
+        if not file:
+            print(out.getvalue(),end="")
 
 # Rhaegal main class that handles the processing and the trigger mechanism.
 class Rhaegal:
     def __init__(self,rulePath=None,outputFormat="CSV",rulesDir=None,logger=None):
+        self.Queue = queue.Queue()
         self.logger = logger
         self.Variables = Variables()
         self.outputFormat = outputFormat
@@ -233,8 +300,9 @@ class Rhaegal:
         for rule in ruleSetStr:
             self.ruleSet.append(Rule(rule[0]))
         for rule in self.ruleSet:
-            if rule.include.get("rule"):
-                self.PublicRulesContainsPrivateRules.append(rule)
+            if rule.include:
+                if rule.include.get("rule"):
+                    self.PublicRulesContainsPrivateRules.append(rule)
             if rule.channel not in self.channels and rule.channel != None:
                 self.channels.append(rule.channel)
         self.channels = [s.lower() for s in self.channels]
@@ -262,12 +330,12 @@ class Rhaegal:
                 return string in self.Variables.IPAddresses    
             else:
                 try:
-                    return self.StringMatch(string,getattr(self.Variables,pattern[1::]))    
+                    return self.StringMatch(string,f"*{getattr(self.Variables,pattern[1::])}*")    
                 except AttributeError:
                     pass
                 eventField = event.get(pattern[1::])
                 if eventField:
-                    return self.StringMatch(string,eventField)    
+                    return self.StringMatch(string,f"*{eventField}*")    
                 else:
                     return False
         else:
@@ -279,49 +347,51 @@ class Rhaegal:
     # The main matching function. tasks rule object and event object as input then returns the matched strings if the rule got triggered or False if not triggered.
     def match(self,rule,event):
         if rule.channel:
-            if rule.channel.lower() != event.Channel.lower():
+            if not self.StringMatch(event.Channel.lower(),rule.channel.lower()):
                 return False
         triggired = True            
         matchStrs = []
-        for key,value in rule.include.items():
-            if key == "rule":
-                for privateRuleName in value:
-                    for privateRule in self.ruleSet:
-                        if privateRule.name == privateRuleName:
-                            triggired = triggired and self.match(privateRule,event)
-            else:
-                try:
-                    if isinstance(rule.include.get(key),list):
-                        oneMatched = False
-                        for s in rule.include.get(key):
+        if rule.include:
+            for key,value in rule.include.items():
+                if key == "rule":
+                    for privateRuleName in value:
+                        for privateRule in self.ruleSet:
+                            if privateRule.name == privateRuleName:
+                                triggired = triggired and self.match(privateRule,event)
+                    return triggired
+                else:
+                    try:
+                        if isinstance(rule.include.get(key),list):
+                            oneMatched = False
+                            for s in rule.include.get(key):
+                                if event.EventData.get(key) == None:
+                                    if self.logger:
+                                        self.logger.warning(f"Unable to find the field '{key}' from the rule '{rule.name}' in the following event : \n {event}")
+                                    oneMatched = False
+                                    break
+                                if self.StringMatch(event.EventData.get(key),s,event.EventData):
+                                    oneMatched = oneMatched or True
+                                    matchStrs.append(event.EventData.get(key))
+                                else:
+                                    oneMatched = oneMatched or False
+                            triggired = triggired and oneMatched
+                            if not triggired:
+                                return False
+                        else:
                             if event.EventData.get(key) == None:
                                 if self.logger:
                                     self.logger.warning(f"Unable to find the field '{key}' from the rule '{rule.name}' in the following event : \n {event}")
-                                oneMatched = False
-                                break
-                            if self.StringMatch(event.EventData.get(key),s,event.EventData):
-                                oneMatched = oneMatched or True
+                            
+                            if event.EventData.get(key) != None and self.StringMatch(event.EventData.get(key),value,event.EventData):
+                                triggired = triggired and True
                                 matchStrs.append(event.EventData.get(key))
                             else:
-                                oneMatched = oneMatched or False
-                        triggired = triggired and oneMatched
-                        if not triggired:
-                            return False
-                    else:
-                        if event.EventData.get(key) == None:
-                            if self.logger:
-                                self.logger.warning(f"Unable to find the field '{key}' from the rule '{rule.name}' in the following event : \n {event}")
-                        
-                        if event.EventData.get(key) != None and self.StringMatch(event.EventData.get(key),value,event.EventData):
-                            triggired = triggired and True
-                            matchStrs.append(event.EventData.get(key))
-                        else:
-                            triggired = triggired and False
-                        if not triggired:
-                            return False
-                except TypeError as e:
-                    if self.logger:
-                        self.logger.error(e,exc_info=True)
+                                triggired = triggired and False
+                            if not triggired:
+                                return False
+                    except TypeError as e:
+                        if self.logger:
+                            self.logger.error(e,exc_info=True)
         for key,value in rule.exclude.items():
             if key == "rule":
                 for privateRuleName in value:
@@ -355,12 +425,13 @@ class Rhaegal:
                     if self.logger:
                         self.logger.error(e,exc_info=True)
                     pass
+
         
         modFlag = True
 
         for modifier in rule.modifiers:
             mod = Modifier(modifier)
-            if mod.Check(event):
+            if mod.Check(event,self.Variables):
                 modFlag = modFlag and True
                 matchStrs.append(f"MOD : {modifier}")
             else:
@@ -370,8 +441,8 @@ class Rhaegal:
         triggired = modFlag and triggired
         
         if triggired:
-            if self.logger:
-                self.logger.info(f"The rule named '{rule.name}' triggered on the event '{event}'")
+            if self.logger and rule.type != "private":
+                self.logger.debug(f"The rule named '{rule.name}' triggered on the event '{event}'")
             return matchStrs
         else:
             return False
@@ -379,8 +450,6 @@ class Rhaegal:
     # Takes an event object as input and look that event on all of the available rules then display alert of the alert got triggered.
     def matchAll(self,event):
         for rule in self.ruleSet:
-            if event.Channel.lower() not in self.channels:
-                continue
             triggired = True
             if rule.type == "public":
                 results = self.match(rule,event)
@@ -389,52 +458,13 @@ class Rhaegal:
                 else:
                     triggired = triggired and False
                 if triggired:
-                    self.displayAlert(event,rule,results)
-    
-    # Formates the output in the choosen format.
-    def displayAlert(self,event,rule,results="",privateRule=False,TriggeredEvents=[]):
-        if self.outputFormat == "RAW":
-            print(event)
-        elif self.outputFormat == "CSV":
-            row = StringIO()
-            writer = csv.writer(row, quoting=csv.QUOTE_NONNUMERIC,lineterminator="\n")
-            if privateRule:
-                recordIDs = []
-                triggeredEventsData = {}
-                privRuleNames = rule.include.get("rule")
-                privateRules = []
-                for r in self.ruleSet:
-                    if r.name in privRuleNames:
-                        privateRules.append(r)
-
-                for r in privateRules:
-                    for e in TriggeredEvents:
-                        if r.channel == e.Channel:
-                            if r.returns:
-                                fields = {}
-                                for field in r.returns:
-                                    fields.update({field:e.EventData.get(field)})
-                                triggeredEventsData[r.name] = fields
-                            else:
-                                triggeredEventsData[r.name] = e.RawRecord
-                for event in TriggeredEvents:
-                    recordIDs.append(event.EventRecordID)
-                data = [event.TimeCreatedSystemTime, recordIDs, rule.name, rule.score, rule.description, rule.reference, results, triggeredEventsData]
-            else:
-                if rule.returns:
-                    returns = {}
-                    for field in rule.returns:
-                        returns[field] = event.EventData.get(field)
-                    data = [event.TimeCreatedSystemTime, event.EventRecordID, rule.name, rule.score, rule.description, rule.reference, results, returns]
-                else:
-                    data = [event.TimeCreatedSystemTime, event.EventRecordID, rule.name, rule.score, rule.description, rule.reference, results, event.RawRecord]
-           
-            writer.writerow(data)
-            print(row.getvalue(),end="")
+                    self.Queue.put(Alert(event,rule,results))
     
     # Reads an EVTX file then process all of the event records.
     def MatchLogFile(self,filePath):
         parser = PyEvtxParser(filePath)
+        if self.logger:
+            self.logger.info(f"Statrted processing the Event log '{filePath}'.")
         for record in parser.records_json():
             try:
                 data = json.loads(record["data"])
@@ -443,6 +473,8 @@ class Rhaegal:
             except Exception as e:
                 if self.logger:
                     self.logger.error(e,exc_info=True)
+        if self.logger:
+            self.logger.info(f"Finished processing the Event log '{filePath}'.")
     # Go through a directory looking for EVTX file then start processing them (single process).
     def MatchLogDirectory(self,directoryPath):
         if self.logger:
@@ -476,7 +508,7 @@ class Rhaegal:
     # This function gets triggred only if there is a public rule that calls private rules in the ruleset
     def ProcessPrivateRules(self,logspath):
         if self.logger:
-            self.logger.info(f"Starting processing private rules on the logs in the directory '{logspath}' ...")
+            self.logger.info(f"Starting processing private rules on the log/s in '{logspath}' ...")
         for pubrule in self.PublicRulesContainsPrivateRules:
             triggered = None
             privRules = []
@@ -523,37 +555,80 @@ class Rhaegal:
             
             if TriggeredEventsWithinTheSpecifiedTime:
                 for EventSet in TriggeredEventsWithinTheSpecifiedTime:
-                    self.displayAlert(event,rule=pubrule,privateRule=True,TriggeredEvents=EventSet)
+                    recordIDs = []
+                    triggeredEventsData = {}
+                    privRuleNames = pubrule.include.get("rule")
+                    privateRules = []
+                    for r in self.ruleSet:
+                        if r.name in privRuleNames:
+                            privateRules.append(r)
+
+                    for r in privateRules:
+                        for e in EventSet:
+                            if r.channel == e.Channel:
+                                if r.returns:
+                                    fields = {}
+                                    for field in r.returns:
+                                        fields.update({field:e.EventData.get(field)})
+                                    triggeredEventsData[r.name] = fields
+                                else:
+                                    triggeredEventsData[r.name] = e.RawRecord
+                    for event in EventSet:
+                        recordIDs.append(event.EventRecordID)
+                    data = [event.TimeCreatedSystemTime, recordIDs, pubrule.name, pubrule.score, pubrule.description, pubrule.reference, [], triggeredEventsData]
+                    self.Queue.put(Alert(event,pubrule,[],privateRule=True,record=data))
             else:
                 return False
 
-    # Go through a directory looking for EVTX file then start processing them (multiprocesses).
-    def MultiProcessingMatchLogDirectory(self,directoryPath,numOfProcesses=1):
+    # Go through a directory/file looking for EVTX file then start processing them (multithreading).
+    def process(self,destPath,numberOfThreads=10):
+        destPath = os.path.abspath(destPath)
         self.LogsToProcess = []
-        processes = []
-        for root, _, files in os.walk(directoryPath):
-            for file in files:
-                if file.endswith(".evtx"):
-                    fullpath = os.path.abspath(os.path.join(root,file))
-                    self.LogsToProcess.append(fullpath)
+        threads = []
+        processedLogs=0
+        if os.path.isfile(destPath):
+            self.LogsToProcess.append(destPath)
+        else:
+            for root, _, files in os.walk(destPath):
+                for file in files:
+                    if file.endswith(".evtx"):
+                        fullpath = os.path.abspath(os.path.join(root,file))
+                        self.LogsToProcess.append(fullpath)
         
-        self.ProcessPrivateRules(directoryPath)
+        if self.logger:
+            logsList = ""
+            for path in self.LogsToProcess:
+                logsList+=f"- {path}\n"
+            self.logger.info(f"The following list is the logs that will be processed by Rhaegal:\n{logsList}")
+
+        p = threading.Thread(target=self.ProcessPrivateRules,args=(destPath,))
+        p.start()
+        threads.append(p)
         for path in self.LogsToProcess:
-            p = multiprocessing.Process(target=self.MatchLogFile,args=(path,))
+            
+            p = threading.Thread(target=self.MatchLogFile,args=(path,))
             p.start()
-            processes.append(p)
+            threads.append(p)
             while True:
-                for thread in processes:
+                while not self.Queue.empty():
+                    yield self.Queue.get()
+                for thread in threads:
                     if not thread.is_alive():
-                        processes.remove(thread)
-                        if len(processes) < numOfProcesses:
+                        threads.remove(thread)
+                        processedLogs +=1
+                        if self.logger:
+                            self.logger.info(f"Processed {processedLogs} of {len(self.LogsToProcess)} Event Logs")
+                        if len(threads) < numberOfThreads:
                             break
-                if len(processes) < numOfProcesses:
+                if len(threads) < numberOfThreads:
                     break
         while True:
-            for thread in processes:
+            while not self.Queue.empty():
+                yield self.Queue.get()
+            for thread in threads:
                 if not thread.is_alive():
-                    processes.remove(thread)
+                    threads.remove(thread)
 
-            if len(processes) == 0:
+            if len(threads) == 0:
                 break
+        

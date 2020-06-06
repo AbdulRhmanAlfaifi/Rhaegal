@@ -45,13 +45,14 @@ The rule consists of two main parts:
     * creationDate: The data of the rule creation.
     * score: an integer representing the severity of the rule. This should be a number from `0` to `100`
     * description: A text descripting what you trying to detect.
-  * Channel: This field is required. This is the name of the log you what to search in. For this example I am looking for the EID `4624` which is in the `Security.evtx` log.
+  * Channel: This field is required. This is the name of the log you what to search in. For this example I am looking for the EID `4624` which is in the `Security.evtx` log. Tis field also accepts wildcard.
   * include: This field is a list of fidelis that will get searched on each record. Each field inside this field could be a single value or a list of values.
   * exclude *(optional)* : This field is a list of fidelis that will get excluded from the search. Each field inside this field could be a single value or a list of values.
   * modifiers *(optional)* : A list of logical and regex checks the event fields. The following is the supported modifiers:
   
     * logical operations (<,>,<=,>=) which will check the length of the field. For example `Data.ServiceName <= 6` will check the length of the field named `Data.ServiceName` if it is less than or equal to `6`
     * regex check on the event field. For example `Data.ServiceName $rex ([a-zA-Z0-9]){10}` will check if the field `Data.ServiceName` is `10` characters in length and it only contains letters and numbers.
+    * String search on all of the events by using the syntax `Search [$str|$rex] <YOUR_SEARCH_STRING>`. If you choose `$str` then a string search will be used but with `$rex` option you can use regex. String search also supports wild cards and varibales. 
   * returns *(optional)*: A list of fields to be returned if the rule got triggered. If this is not provided the raw event data will be returned.
 
 # Variables 

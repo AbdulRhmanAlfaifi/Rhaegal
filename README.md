@@ -35,23 +35,31 @@ After the installation of Rhaegal navigate to it's directory then execute `rhaeg
 
 ```
 usage: rhaegal.py [-h] [-l LOG] [-lp LOGSPATH] [-r RULE] [-rp RULESPATH]
-                  [--headers] [-v] [--processes PROCESSES]
+                  [--headers] [-o OUTPUT] [-n THREADS] [--no-log]
+                  [--log-file LOG_FILE]
+                  [--log-level {CRITICAL,ERROR,WARNING,INFO,DEBUG}] [-v]
 
-Rhaegal, Windows Event Logs Processig and Detection Tool
+Rhaegal, Windows Event Logs Processing and Detection Tool
 
 optional arguments:
   -h, --help            show this help message and exit
-  -l LOG, --log LOG     The log you want to run the rules aginst
+  -l LOG, --log LOG     The log you want to run the rules against
   -lp LOGSPATH, --logsPath LOGSPATH
                         A path that contains Windows Event Logs files (EVTX)
-                        to run the rules aginst
+                        to run the rules against
   -r RULE, --rule RULE  Rhaegal rule you want to use
   -rp RULESPATH, --rulesPath RULESPATH
                         Path that contains Rhaegal rules
   --headers             Print the headers
+  -o OUTPUT, --output OUTPUT
+                        Results output file (Defaults to stdout)
+  -n THREADS, --threads THREADS
+                        Number of threads to use (Default=10)
+  --no-log              Do not create log file
+  --log-file LOG_FILE   Log file path
+  --log-level {CRITICAL,ERROR,WARNING,INFO,DEBUG}
+                        Logging level (Defaults to INFO)
   -v, --version         Print version number
-  --processes PROCESSES
-                        Number of processes to use
 ```
 
 * -l <LOG> **or** --log <LOG> : A Windows Event Log file to process.
@@ -59,7 +67,12 @@ optional arguments:
 * -r **or** --rule : A Rhaegal rule file to use on the processing.
 * -rp **or** --rulesPath :  A path that contains Rhaegal rule files that will be used to scan the specified logs.
 * --headers : Prints CSV headers.
-* --processes : Rhaegal make use of multiprocessing. with this option you can specify the number of processes Rhaegal can use.
+* -o **or** --output: The results output file (Default is **stdout**)
+* -n **or** --threads: Rhaegal make use of multithreading. with this option you can specify the number of threads Rhaegal can use.
+* --no-log: Do not make a log file.
+* --log-file: The path for the log file to be used by Rhaegal.
+* --log-level: The log level (Default is **INFO**)
+* -v **or** --version: Prints RhaegalLib **&** Rhaegal version numbers.
 
 # Examples
 

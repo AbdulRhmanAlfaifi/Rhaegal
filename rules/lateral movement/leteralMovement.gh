@@ -1,0 +1,255 @@
+public PSSession_Outgoing_Connection
+{
+    metadata:
+      author: "AbdulRhman Alfaifi"
+      reference: "internal research"
+      creationDate: "06/06/2020"
+      score: 70
+      description: "New PSSesion connection from client side"
+    Channel: "Security"
+    include:
+      EventID: "4648"
+      Data.ProcessName: "*powershell.exe*"
+    returns:
+    - Data.TargetUserName
+    - Data.TargetDomainName
+    - Data.TargetServerName
+    - Data.TargetInfo
+    - Data.ProcessName
+    - Channel
+}
+
+public PSSession_Outgoing_Connection_2
+{
+    metadata:
+      author: "AbdulRhman Alfaifi"
+      reference: "internal research"
+      creationDate: "06/06/2020"
+      score: 70
+      description: "New PSSesion connection from client side"
+    Channel: "Microsoft-Windows-WinRM/Operational"
+    include:
+      EventID: "6"
+    returns:
+    - Data.connection
+    - Security.UserID
+}
+
+public PSSession_Outgoing_Connection_Started
+{
+    metadata:
+      author: "AbdulRhman Alfaifi"
+      reference: "internal research"
+      creationDate: "06/06/2020"
+      score: 70
+      description: "PSSession session from client side started"
+    Channel: "Microsoft-Windows-PowerShell/Operational"
+    include:
+      EventID: "8197"
+      Data.param1: "Opened"
+}
+
+public PSSession_Outgoing_Connection_Ended
+{
+    metadata:
+      author: "AbdulRhman Alfaifi"
+      reference: "internal research"
+      creationDate: "06/06/2020"
+      score: 70
+      description: "PSSesion session from client side ended"
+    Channel: "Microsoft-Windows-PowerShell/Operational"
+    include:
+      EventID: "8197"
+      Data.param1: "Closed"
+}
+
+public PSSession_Session_Started
+{
+    metadata:
+      author: "AbdulRhman Alfaifi"
+      reference: "internal research"
+      creationDate: "06/06/2020"
+      score: 70
+      description: "New PSSesion Session Started"
+    Channel: "Windows PowerShell"
+    include:
+      EventID: "400"
+      Data0: "Available"
+      Data2: "*HostName=ServerRemoteHost*"
+    returns:
+    - Data0
+    - Data2
+    - Channel
+}
+
+public PSSession_Session_Ended
+{
+    metadata:
+      author: "AbdulRhman Alfaifi"
+      reference: "internal research"
+      creationDate: "06/06/2020"
+      score: 70
+      description: "New PSSesion Session Ended"
+    Channel: "Windows PowerShell"
+    include:
+      EventID: "403"
+      Data0: "Stopped"
+      Data2: "*HostName=ServerRemoteHost*"
+    returns:
+    - Data0
+    - Data2
+    - Channel
+}
+
+public PSSession_Incomming_Ended
+{
+    metadata:
+      author: "AbdulRhman Alfaifi"
+      reference: "internal research"
+      creationDate: "06/06/2020"
+      score: 70
+      description: "New PSSesion Incomming Connection"
+    Channel: "Microsoft-Windows-WinRM/Operational"
+    include:
+      EventID: "31"
+}
+
+public Inbound_RDP_Session
+{
+    metadata:
+      author: "AbdulRhman Alfaifi"
+      reference: "internal research"
+      creationDate: "06/06/2020"
+      score: 70
+      description: "Successfull Inbound RDP Session"
+    Channel: "Microsoft-Windows-TerminalServices-LocalSessionManager/Operational"
+    include:
+      EventID: 
+      - "21"
+      - "22"
+    exclude:
+      UserData.EventXML.Address: "LOCAL"
+    returns:
+      - "EventID"
+      - "UserData.EventXML.Address"
+      - "UserData.EventXML.User"
+      - "UserData.EventXML.SessionID"
+      - "Channel"
+}
+
+public Outbound_RDP_Session
+{
+    metadata:
+      author: "AbdulRhman Alfaifi"
+      reference: "internal research"
+      creationDate: "06/06/2020"
+      score: 70
+      description: "Successfull Outbound RDP Session"
+    Channel: "Microsoft-Windows-TerminalServices-LocalSessionManager/Operational"
+    include:
+      EventID: "1024"
+    returns:
+    - "EventID"
+    - "Data.Value"
+    - "Channel"
+}
+
+public SMB_share_mounted
+{
+    metadata:
+      author: "AbdulRhman Alfaifi"
+      reference: "internal research"
+      creationDate: "06/06/2020"
+      score: 70
+      description: "Share folder on this system has been mounted"
+    Channel: "Security"
+    include:
+      EventID: "4776"
+    exclude:
+      Data.Workstation: $COMPUTERNAME
+    returns:
+    - "EventID"
+    - "Data.TargetUserName"
+    - "Data.Workstation"
+    - "Channel"
+}
+
+public DetectedRemoteExecutionService
+{
+    metadata:
+      author: "AbdulRhman Alfaifi"
+      reference: "internal research"
+      creationDate: "06/06/2020"
+      score: 70
+      description: "Detect RemoteAccessTool Service Installed"
+    Channel: "System"
+    include:
+      EventID: "7045"
+      Data.ImagePath: 
+      - "*PSEXE*"
+      - "*paexe*"
+      - "*anydesk*"
+      - "*__output*"
+      - "*execute.bat*"
+}
+
+private DetectedATExec
+{
+    metadata:
+      author: "AbdulRhman Alfaifi"
+      reference: "internal research"
+      creationDate: "06/06/2020"
+      score: 70
+      description: "Detected remote execution tool atexec.py"
+    Channel: "Microsoft-Windows-TaskScheduler/Operational"
+    include:
+      EventID: "106"
+    modifiers:
+    - Data.TaskName $rex \\[a-zA-Z]{8}
+    returns:
+    - "Data.TaskName"
+    - "Data.UserContext"
+    - "Channel"
+}
+
+public Rare_Service_Installs 
+{
+    metadata:
+      author: Florian Roth
+      reference: ''
+      creationDate: '2019-10-22'
+      score: 40
+      description: Detects rare service installs that only appear a few times per time
+        frame and could reveal password dumpers, backdoor installs or other types of malicious
+        services
+    Channel: System
+    include:
+      EventID: '7045'
+    modifiers:
+     - Data.ServiceName <= 6
+    returns:
+      - Data.ServiceName
+      - Data.ImagePath
+      - Security.UserID
+      - Channel
+}
+
+public WMI_Remote_Execution 
+{
+    metadata:
+      author: "AbdulRhman Alfaifi"
+      reference: "internal research"
+      creationDate: "06/06/2020"
+      score: 70
+      description: "Detected WMI remote execution tool"
+    Channel: "Microsoft-Windows-WMI-Activity/Operational"
+    include:
+      EventID: 
+      - "5861"
+      - "5860"
+    returns:
+    - "UserData.Operation_ESStoConsumerBinding.ESS"
+    - "UserData.Operation_ESStoConsumerBinding.CONSUMER"
+    - "UserData.Operation_ESStoConsumerBinding.PossibleCause"
+    - "Channel"
+}
