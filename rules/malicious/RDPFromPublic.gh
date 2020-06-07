@@ -32,6 +32,7 @@ public Inbound_RDP_Session_From_Public_IP
       - "172.29.*.*"
       - "172.30.*.*"
       - "172.31.*.*"
+      - "LOCAL"
     returns:
       - "EventID"
       - "UserData.EventXML.Address"
@@ -72,6 +73,7 @@ public Inbound_RDP_Session_From_Public_IP_2
       - "172.29.*.*"
       - "172.30.*.*"
       - "172.31.*.*"
+      - "LOCAL"
     returns:
       - "EventID"
       - "UserData.EventXML.Param1"
