@@ -80,22 +80,23 @@ public ScheduledTaskCreated
     - "EventID"
 }
 
-public ScheduledTaskUpdated
-{
-    metadata:
-      author: "AbdulRhman Alfaifi"
-      reference: "Init Rules"
-      creationDate: "17/10/2019"
-      score: 70
-      description: "New Scheduled Task was Updated"
-    Channel: "Microsoft-Windows-TaskScheduler/Operational"
-    include:
-      EventID: "140"
-    exclude:
-      Data.TaskName:
-      - "*Microsoft IRTK Scan Task"
-      - "*Scheduled task CIS2"
-}
+# Removed for having a LOT of FP.
+# public ScheduledTaskUpdated
+# {
+#     metadata:
+#       author: "AbdulRhman Alfaifi"
+#       reference: "Init Rules"
+#       creationDate: "17/10/2019"
+#       score: 70
+#       description: "New Scheduled Task was Updated"
+#     Channel: "Microsoft-Windows-TaskScheduler/Operational"
+#     include:
+#       EventID: "140"
+#     exclude:
+#       Data.TaskName:
+#       - "*Microsoft IRTK Scan Task"
+#       - "*Scheduled task CIS2"
+# }
 
 public ScheduledTaskDeleted
 {

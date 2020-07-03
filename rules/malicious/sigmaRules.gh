@@ -974,7 +974,7 @@ public Suspicious_access_to_sensitive_file_extensions
       - '*.rdp'
 }
 # ----------------------------------------------------------------------------------------------------
-public Rare_Service_Installs 
+public Rare_Service_Installs_
 {
     metadata:
       author: Florian Roth

@@ -193,7 +193,7 @@ public DetectedRemoteExecutionService
       - "*execute.bat*"
 }
 
-private DetectedATExec
+private ATExecTaskCreated
 {
     metadata:
       author: "AbdulRhman Alfaifi"
@@ -211,6 +211,42 @@ private DetectedATExec
     - "Data.UserContext"
     - "Channel"
 }
+
+private ATExecTaskDeleted
+{
+    metadata:
+      author: "AbdulRhman Alfaifi"
+      reference: "internal research"
+      creationDate: "06/06/2020"
+      score: 70
+      description: "Detected remote execution tool atexec.py"
+    Channel: "Microsoft-Windows-TaskScheduler/Operational"
+    include:
+      EventID: "141"
+    modifiers:
+    - Data.TaskName $rex \\[a-zA-Z]{8}
+    returns:
+    - "Data.TaskName"
+    - "Data.UserContext"
+    - "Channel"
+}
+
+public ATExecDetected
+{
+    metadata:
+      author: "AbdulRhman Alfaifi"
+      reference: "internal research"
+      creationDate: "06/06/2020"
+      score: 70
+      description: "Detected remote execution tool atexec.py"
+    include:
+      rule:
+      - "ATExecTaskDeleted"
+      - "ATExecTaskCreated"
+      if:
+        within: 100
+}
+
 
 public Rare_Service_Installs 
 {
