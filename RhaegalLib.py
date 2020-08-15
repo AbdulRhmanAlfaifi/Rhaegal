@@ -16,7 +16,7 @@ import ifaddr
 import queue
 
 __author__ = "AbdulRhman Alfaifi"
-__version__ = "1.3"
+__version__ = "1.3.1"
 __maintainer__ = "AbdulRhman Alfaifi"
 __license__ = "GPL"
 __status__ = "Development"
@@ -238,7 +238,7 @@ class Alert:
     def __init__(self,event,rule,matchedStrings,privateRule=False,record=None):
         self.event = event
         self.rule = rule
-        self.isPrivateRule = True if rule.type.lower() == "private" else False
+        self.isPrivateRule = privateRule
         self.matchedStrings = matchedStrings
         self.record = record
 
@@ -249,7 +249,7 @@ class Alert:
         else:
             out = StringIO()
         writer = csv.writer(out, quoting=csv.QUOTE_NONNUMERIC,lineterminator="\n")
-        if self.record:
+        if self.isPrivateRule:
             writer.writerow(self.record)
         else:
             if self.rule.returns:
@@ -565,7 +565,7 @@ class Rhaegal:
 
                     for r in privateRules:
                         for e in EventSet:
-                            if r.channel == e.Channel:
+                            if self.match(r,e):
                                 if r.returns:
                                     fields = {}
                                     for field in r.returns:
