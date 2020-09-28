@@ -16,7 +16,7 @@ import ifaddr
 import queue
 
 __author__ = "AbdulRhman Alfaifi"
-__version__ = "1.3.1"
+__version__ = "1.3.2"
 __maintainer__ = "AbdulRhman Alfaifi"
 __license__ = "GPL"
 __status__ = "Development"
@@ -117,10 +117,15 @@ class Modifier:
 
 # A class that represents an event record. it takes 'lxml' object as input.
 class Event:
-    def __init__(self,record):
-        self.RawRecord = record
-        self.EventData = self.BuildEventData(record["Event"])
-        # init System fields
+    def __init__(self,record=None,raw=None):
+        if raw:
+            self.RawRecord = raw
+            self.EventData = raw
+        elif record:
+            self.RawRecord = record
+            self.EventData = self.BuildEventData(record["Event"])
+        else:
+            raise ValueError(f"'record' or 'raw' is required")
         
         for key, value in self.EventData.items():
             setattr(self, key.replace(".",""), value)
@@ -184,6 +189,10 @@ class Rule:
         self.include = ruleData.get("include")
         self.score = ruleData.get("metadata").get("score")
         self.channel = ruleData.get("Channel")
+        if not self.channel:
+            self.channel = ruleData.get("channel")
+        if not  self.channel:
+            self.channel = "*"
         self.exclude = ruleData.get("exclude")
         self.modifiers = ruleData.get("modifiers")
         self.returns = ruleData.get("returns")
@@ -238,7 +247,7 @@ class Alert:
     def __init__(self,event,rule,matchedStrings,privateRule=False,record=None):
         self.event = event
         self.rule = rule
-        self.isPrivateRule = privateRule
+        self.isPrivateRule = True if rule.type.lower() == "private" else False
         self.matchedStrings = matchedStrings
         self.record = record
 
@@ -249,7 +258,7 @@ class Alert:
         else:
             out = StringIO()
         writer = csv.writer(out, quoting=csv.QUOTE_NONNUMERIC,lineterminator="\n")
-        if self.isPrivateRule:
+        if self.record:
             writer.writerow(self.record)
         else:
             if self.rule.returns:
@@ -565,7 +574,7 @@ class Rhaegal:
 
                     for r in privateRules:
                         for e in EventSet:
-                            if self.match(r,e):
+                            if r.channel == e.Channel:
                                 if r.returns:
                                     fields = {}
                                     for field in r.returns:
