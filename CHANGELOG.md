@@ -1,6 +1,13 @@
-# Change Log
-
 ## RhaegalLib
+### Version 1.3.2 - 28/09/2020
+
+* Added support for Dracarys.
+* Bug fixes.
+
+### Version 1.3.1 - 15/08/2020
+
+* Bug fixes in private rule detection.
+
 ### Version 1.3 - 06/06/2020
 
 * Change the processing from multiprocessing to multithriding.

@@ -9,6 +9,7 @@ public WindowsEventLogCleared
     Channel: "System"
     include:
       EventID: "104"
+      Provider.Name: "Microsoft-Windows-Eventlog"
     returns:
       - "EventID"
       - "UserData.LogFileCleared.Channel"
