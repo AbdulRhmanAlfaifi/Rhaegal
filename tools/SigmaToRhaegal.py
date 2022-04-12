@@ -11,17 +11,14 @@ __license__ = "GPL"
 __status__ = "Development"
 
 parser = argparse.ArgumentParser(description="Convert SIGMA rules to Rhaegal rules")
-parser.add_argument("-r","--rulesDir",help="Path that contains SIGMA rules.")
-parser.add_argument("-o","--output",help="The path where the results will be saved.")
+parser.add_argument("-r","--rulesDir",help="Path that contains SIGMA rules.", required=True)
+parser.add_argument("-o","--output",help="The path where the results will be saved.", required=True)
 parser.add_argument("-v","--version",help="Print version number",action="store_true",default=False)
 
 if "__main__" == __name__:
     args = parser.parse_args()
     if args.version:
         print(f"v{__version__}")
-        exit()
-    else:
-        print("error: the following arguments are required: -r/--rulesDir, -o/--output")
         exit()
     map = {'application': 'Application', 'security': 'Security', 'system': 'System', 'sysmon': 'Microsoft-Windows-Sysmon/Operational', 'powershell': 'Microsoft-Windows-PowerShell/Operational', 'taskscheduler': 'Microsoft-Windows-TaskScheduler/Operational', 'wmi': 'Microsoft-Windows-WMI-Activity/Operational', 'dhcp': 'Microsoft-Windows-DHCP-Server/Operational','powershell-classic': 'Windows PowerShell'}
     outfile = open(args.output,"w")
