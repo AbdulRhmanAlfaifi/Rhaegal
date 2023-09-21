@@ -81,3 +81,46 @@ public Inbound_RDP_Session_From_Public_IP_2
       - "UserData.EventXML.Param3"
       - "Channel"
 }
+
+
+private LoginType3
+{
+    metadata:
+      author: "AbdulRhman Alfaifi"
+      reference: "N/A"
+      creationDate: "20/10/2019"
+      description: "Login type 10"
+    Channel: "Security"
+    include:
+      EventID: "4624"
+      Data.LogonType: "10"
+    exclude:
+      UserData.EventXML.Param3: 
+      - "192.168.*.*"
+      - "10.*.*.*"
+      - "172.16.*.*"
+      - "172.17.*.*"
+      - "172.18.*.*"
+      - "172.19.*.*"
+      - "172.20.*.*"
+      - "172.21.*.*"
+      - "172.22.*.*"
+      - "172.23.*.*"
+      - "172.24.*.*"
+      - "172.25.*.*"
+      - "172.26.*.*"
+      - "172.27.*.*"
+      - "172.28.*.*"
+      - "172.29.*.*"
+      - "172.30.*.*"
+      - "172.31.*.*"
+      - "LOCAL"
+    returns:
+    - EventID
+    - Channel
+    - TimeCreated.SystemTime
+    - Data.LogonType
+    - Data.AuthenticationPackageName
+    - Data.TargetUserName
+    - Data.IpAddress
+}
